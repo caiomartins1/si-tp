@@ -7,3 +7,9 @@
 # 3. 
 
 ### Notes: If possible, add persistence to the app.
+
+# Deadline: 21 de maio (Sexta-Feira), Relatório 23 de maio.
+
+## Datas:
+### Iniciar projeto: 4 de maio (Terça Feira)
+### Iniciar Relatório: 15 de maio (Sabado)
