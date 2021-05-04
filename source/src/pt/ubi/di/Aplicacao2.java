@@ -1,6 +1,6 @@
-package SI;
+package pt.ubi.di;
 
-import Model.Validations;
+import pt.ubi.di.Model.*;
 
 public class Aplicacao2 {
     public static void main(String[] args) {

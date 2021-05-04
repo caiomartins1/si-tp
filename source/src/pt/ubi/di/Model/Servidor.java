@@ -1,6 +1,6 @@
-package SI;
+package pt.ubi.di.Model;
 
-import Model.Validations;
+import pt.ubi.di.Model.*;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
