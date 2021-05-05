@@ -10,7 +10,7 @@
 
 # Opcionais
 
-# 1. Poder zipar os conteúdos para deposi enviar. 
+# 1. Enviar um ficheiro.
 
 ### Notes: If possible, add persistence to the app.
 
