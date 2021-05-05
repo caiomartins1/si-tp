@@ -28,13 +28,14 @@ public class Aplicacao {
                 servidor.ConectarCliente(2222);
                 break;
             case "3":
+                /*Exemple test
                 SecurityDH based = new SecurityDH(4096,false);
                 SecurityDH based2 = new SecurityDH(based.getG(),based.getP());
                 based.generateValues(false);
                 based2.generateValues(false);
 
                 based.generateKey(based2.getX());
-                based2.generateKey(based.getX());
+                based2.generateKey(based.getX());*/
 
                 break;
         }
