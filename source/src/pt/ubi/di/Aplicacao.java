@@ -1,6 +1,7 @@
 package pt.ubi.di;
 
 import pt.ubi.di.Model.*;
+import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityUtil;
 
 import java.math.BigInteger;
@@ -16,6 +17,8 @@ public class Aplicacao {
         //String answer = Validations.readString();
         String answer = "3";
 
+        ;
+
         switch(answer){
             case "1":
                 Cliente c = new Cliente();
@@ -25,9 +28,14 @@ public class Aplicacao {
                 servidor.ConectarCliente(2222);
                 break;
             case "3":
-                BigInteger prime =SecurityUtil.generatePrime(4096,true);
-                //SecurityUtil.checkIfSafePrime(prime,true);
-                SecurityUtil.findGenerator(prime,true);
+                SecurityDH based = new SecurityDH(4096,false);
+                SecurityDH based2 = new SecurityDH(based.getG(),based.getP());
+                based.generateValues(false);
+                based2.generateValues(false);
+
+                based.generateKey(based2.getX());
+                based2.generateKey(based.getX());
+
                 break;
         }
     }

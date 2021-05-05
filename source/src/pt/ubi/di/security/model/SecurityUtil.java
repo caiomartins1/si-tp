@@ -1,6 +1,5 @@
 package pt.ubi.di.security.model;
 
-import java.security.*;
 import java.math.BigInteger;
 import java.util.HashSet;
 import java.util.Random;
@@ -20,7 +19,7 @@ public class SecurityUtil {
     /**
      * Generates a prime number,TODO: not *truly random* (try to use secureRandom) for seeding
      * @param bitLength amount of bits desired
-     * @param verbose
+     * @param verbose print messages
      * @return BigInteger (probably) prime number
      */
     public static BigInteger generatePrime(int bitLength, boolean verbose) {
@@ -31,70 +30,94 @@ public class SecurityUtil {
     }
 
     /**
-     * Function to check if a given value is a prime or not - WARNING VERY SLOW FOR BIG VALUES (32 bits or more)
-     * TODO: may update with thread? to try and make it faster
-     * @param value - value to test if prime
-     * @param verbose
-     * @return true if value is prime, false if value is not prime
+     * Generates a safe prime number,TODO: not *truly random* (try to use secureRandom) for seeding
+     * Harder to attack Takes longer to generate
+     * @param bitLength amount of bits desired
+     * @param verbose print messages
+     * @return BigInteger (probably) prime number
      */
-    public static boolean checkIfPrime(BigInteger value, boolean verbose) {
-        for (BigInteger i=BigInteger.valueOf(2);i.compareTo(value) < 0;i=i.add(BigInteger.ONE)) {
-            if (value.mod(i).compareTo(BigInteger.ZERO) == 0) {
-                if (verbose)
-                    System.out.println("--->Value: " + value + " is not a prime.");
-                return false;
+    public static BigInteger generateSafePrime(int bitLength, boolean verbose) {
+        boolean flag;
+        do {
+            if (verbose)
+                System.out.print(".");
+            BigInteger prime = generatePrime(bitLength,false);
+            if (verbose)
+                System.out.print("*");
+            flag = checkIfSafePrime(prime, 0,false);
+            if (verbose)
+                System.out.print(".");
+            if (flag) {
+                return prime;
             }
-        }
-        if (verbose)
-            System.out.println("--->Value: " + value + " is a prime.");
-        return true;
+        } while (true);
     }
 
     /**
-     * Function to check if a given value is a safe prime or not - WARNING PROB VERY SLOW
-     * provides 2 different methods
-     * TODO: may update with thread? to try and make it faster
-     * @param value - value to test if it is a safe prime
-     * @param verbose
-     * @param method
-     * @return true if value is a safe prime, false if value is not a safe prime
+     * Need to optmize
+     * @param maxValue max number
+     * @param verbose print messages
+     * @return random number
      */
-    public static boolean checkIfSafePrime(BigInteger value, boolean verbose,int method) {
-        BigInteger result = value.subtract(BigInteger.ONE).divide(BigInteger.TWO);
-        if (checkIfPrime(result,false)) {
+    public static BigInteger generateNumber(BigInteger maxValue, boolean verbose) {
+        BigInteger number;
+        do {
+            number = new BigInteger(maxValue.bitLength(), random);
+        } while (number.compareTo(maxValue) >= 0);
+        if (verbose)
+            System.out.println("--->Random number: "+number.toString());
+        return number;
+    }
+
+    /**
+     * Function to check if a given value is a prime or not
+     * @param value value to test if prime
+     * @param verbose print messages
+     * @return true if value is prime, false if value is not prime
+     */
+    public static boolean checkIfPrime(BigInteger value, boolean verbose) {
+        if (value.isProbablePrime(5)) { //kinda useless
             if (verbose)
-                System.out.println("--->Value: " + value + " is a safe prime.");
+                System.out.println("--->Value: " + value + "\n    is a prime.");
             return true;
         }
         if (verbose)
-            System.out.println("--->Value: " + value + " is not a safe prime.");
+            System.out.println("--->Value: " + value + "\n    is not a prime.");
         return false;
     }
 
     /**
-     * Power for BigInteger
-     * WARNING probably not a good idea to use it, results are bound to be f*cking crazy
-     * @param base base for pow
-     * @param exponent exponent for pow
-     * @return result of base^exponent
+     * Function to check if a given value is a safe prime or not - NOT AS SLOW
+     * provides 2 different methods
+     * @param value value to test if it is a safe prime
+     * @param verbose print messages
+     * @return true if value is a safe prime, false if value is not a safe prime
      */
-    public static BigInteger powBig(BigInteger base,BigInteger exponent) {
-        BigInteger originalBase = base;
-        exponent= exponent.subtract(BigInteger.ONE);
-        while (exponent.signum() !=0) {
-            base = base.multiply(originalBase);
-            exponent = exponent.subtract(BigInteger.ONE);
+    public static boolean checkIfSafePrime(BigInteger value, int method, boolean verbose) {
+        BigInteger result;
+        if (method == 1) {
+            result = value.subtract(BigInteger.ONE).divide(BigInteger.TWO);
         }
-        return base;
+        else {
+            result = value.multiply(BigInteger.TWO).add(BigInteger.ONE);
+        }
+        if (checkIfPrime(result,verbose)) {
+            if (verbose)
+                System.out.println("--->Value: " + value + "\n    is a safe prime.");
+            return true;
+        }
+        if (verbose)
+            System.out.println("--->Value: " + value + "\n    is not a safe prime.");
+        return false;
     }
 
     /**
-     * Function to find prime factors of a prime number, used to find a generator, VERY time consuming
-     * It finds one or tow prime factors only!!!!
+     * Function to find prime factors of a prime number, used to find a generator, Alternative Version, LESS time consuming
+     * It finds one or two prime factors only!!!!
      * Chance it might not work everytime?
-     * @param storage
-     * @param value
-     * @param verbose
+     * @param storage hash storage
+     * @param value prime to look for factors for
+     * @param verbose print messages
      */
     private static void findPrimeFactors(HashSet<BigInteger> storage, BigInteger value, boolean verbose) {
         boolean flag = false;
@@ -105,11 +128,12 @@ public class SecurityUtil {
             value = value.divide(BigInteger.TWO);
         }
         for (BigInteger i = BigInteger.valueOf(3);i.compareTo(value.sqrt())<=0;i=i.add(BigInteger.TWO)) {
-            if(flag)
+            if (flag) {
                 break;
-            while (value.mod(i).compareTo(BigInteger.ZERO) == 0) {//if value mod i == 0
+            }
+            if (i.isProbablePrime(5)) {//if value mod i == 0
                 if (verbose)
-                    System.out.println("--->Found prime factor: " + i);
+                    System.out.println("--->Found prime factor Alt: " + i);
                 storage.add(i);
                 value = value.divide(i);
                 if (count>=arbitraryNumber) {
@@ -138,13 +162,13 @@ public class SecurityUtil {
      * TODO Need to format function
      *
      * @param p assume its prime
-     * @param verbose
+     * @param verbose print messages
      * @return generator
      */
     public static BigInteger findGenerator(BigInteger p, boolean verbose) {
-        HashSet<BigInteger> storage = new HashSet<BigInteger>();
+        HashSet<BigInteger> storage = new HashSet<>();
         BigInteger phi = p.subtract(BigInteger.ONE);
-        BigInteger result = BigInteger.ZERO;
+        BigInteger result;
 
         findPrimeFactors(storage,phi,verbose);
 
@@ -171,4 +195,20 @@ public class SecurityUtil {
         return BigInteger.ZERO;
     }
 
+    /**
+     * Power for BigInteger
+     * WARNING probably not a good idea to use it, results are bound to be f*cking crazy
+     * @param base base for pow
+     * @param exponent exponent for pow
+     * @return result of base^exponent
+     */
+    public static BigInteger powBig(BigInteger base,BigInteger exponent) {
+        BigInteger originalBase = base;
+        exponent= exponent.subtract(BigInteger.ONE);
+        while (exponent.signum() !=0) {
+            base = base.multiply(originalBase);
+            exponent = exponent.subtract(BigInteger.ONE);
+        }
+        return base;
+    }
 }
