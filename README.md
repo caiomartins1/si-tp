@@ -6,6 +6,12 @@
 
 # 3. 
 
+
+
+# Opcionais
+
+# 1. Poder zipar os conteúdos para deposi enviar. 
+
 ### Notes: If possible, add persistence to the app.
 
 # Deadline: 21 de maio (Sexta-Feira), Relatório 23 de maio.
