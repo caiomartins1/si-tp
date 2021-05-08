@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 
 //TODO: Maybe implement from scratch?
+//TODO: Choose different hash functions 
 public class PBKDF2 {
     public static void main(String[] args) {
 
