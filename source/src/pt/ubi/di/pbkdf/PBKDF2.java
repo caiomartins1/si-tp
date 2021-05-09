@@ -17,7 +17,7 @@ public class PBKDF2 {
     }
 
     /**
-     * @param byteArr byte array to be converted to a String
+     * @param byteArr byte array to be converted to a hex String
      * @return String representation of hex value.
      * <p>
      * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
