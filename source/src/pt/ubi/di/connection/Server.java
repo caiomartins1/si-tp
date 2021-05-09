@@ -1,33 +1,31 @@
-package pt.ubi.di.Model;
+package pt.ubi.di.connection;
+
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 
 public class Server {
-
     private ServerSocket serverSocket;
     private Socket socket;
-    private ArrayList<Connection> connections;
+    private ArrayList<Connection> connectionsAvailable;
 
     public Server(int port) {
-        connections = new ArrayList<>();
+        connectionsAvailable = new ArrayList<>();
         try {
             serverSocket = new ServerSocket(port);
-            System.out.println("Waiting new connections!");
             while (true) {
+                System.out.println("Waiting new connections!");
                 socket = serverSocket.accept();
-                connections.add(new Connection(socket,connections));
-                TimeUnit.SECONDS.sleep(2);
+                connectionsAvailable.add(new Connection(socket,connectionsAvailable));
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             System.out.println("Erro: " + e.getMessage());
         }
     }
 
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         Server server = new Server(1234);
     }
 }
