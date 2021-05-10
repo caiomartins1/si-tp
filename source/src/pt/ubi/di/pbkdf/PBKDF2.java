@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 
 //TODO: Maybe implement from scratch?
+//TODO: Choose different hash functions 
 public class PBKDF2 {
     public static void main(String[] args) {
 
@@ -16,7 +17,7 @@ public class PBKDF2 {
     }
 
     /**
-     * @param byteArr byte array to be converted to a String
+     * @param byteArr byte array to be converted to a hex String
      * @return String representation of hex value.
      * <p>
      * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
