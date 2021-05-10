@@ -44,7 +44,7 @@ public class PBKDF2 {
      * <p>
      *    Examples of pseudorandom function for PBKDF2 include
      *    HMAC with SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, and
-     *    SHA-512/256.  Applications may employ other schemes as well.
+     *    SHA-512/256.
      */
     public static String hashPassword(String algorithm, String password, String salt, int iterations, int keyLength) {
 
