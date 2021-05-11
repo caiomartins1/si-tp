@@ -11,6 +11,7 @@ public class SecurityRSA {
         this.p = p;
         this.q = q;
     }
+    
     public SecurityRSA(int bitLength, boolean verbose) {
         //SecureRandom r = new SecureRandom();
         //p = new BigInteger(bitLength, /*int certainty*/ ,r);
@@ -27,6 +28,7 @@ public class SecurityRSA {
         //Calcula n = p * q
         N = p.multiply(q);
     }
+
     public void generate_phi_N(){
         //Calcula a função phi(n) = (p - 1)*(q - 1)
         M = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
@@ -63,6 +65,5 @@ public class SecurityRSA {
     public BigInteger getPhi(){
         return M;
     }
-
     
 }
