@@ -1,29 +1,35 @@
 package pt.ubi.di.connection;
 
-import pt.ubi.di.Model.Client_Lite;
-import pt.ubi.di.Model.Server_Lite;
+import pt.ubi.di.Model.ApplyClientConnection;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 public class Connection extends Thread {
 
+    // The attribute of the class
     private Socket socket;
     private ObjectOutputStream outputStream;
     private ObjectInputStream inputStream;
     private ArrayList<Connection> connectionsAvailable;
-    private ArrayList<String> messages;
     private String connectionName;
+    private ArrayList<ApplyClientConnection> messages;
 
+    /**
+     * Constructor of the class Connection, this class is a Thread responsible to handle with the
+     * new connection with the server (NORMAL).
+     * @param socket Socket with the connection pre-establish in the Server
+     * @param connectionsAvailable ArrayList with all connections available in the currently server
+     */
     public Connection(Socket socket, ArrayList<Connection> connectionsAvailable) {
         super();
         this.socket = socket;
         this.connectionsAvailable = connectionsAvailable;
         this.messages = new ArrayList<>();
+        connectionName = "Without name!";
         try {
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             inputStream = new ObjectInputStream(socket.getInputStream());
@@ -43,34 +49,29 @@ public class Connection extends Thread {
         }
     }
 
+    /**
+     * Function that handle with the input (received from the Client)
+     * @param action A array of String with the parameters received from the client
+     * @throws IOException
+     */
     public void handleAction(String[] action) throws IOException {
-        System.out.println("Action: " + action[1] + ", name: " + action[0]);
-        switch (action[1]) {
-            case "-init":
-                init(action[2]);
-                break;
-            case "-help":
-                help(action);
-                break;
-            case "-list":
-                connectionsList(action);
-                break;
-            case "-connect":
-                connectToAnotherClient(action);
-                break;
-            default:
-                writeConnection(action,"Command '" + action[1] + "' not fold!");
-                break;
+        System.out.println("Action: " + action[0] + ", Username: " + connectionName);
+        switch (action[0]) {
+            case "-init" -> commandChangeConnectionName(action[1]);
+            case "-help" -> commandHelp();
+            case "-list" -> commandListOfUsers();
+            case "-connect" -> commandConnectToAnotherClient(action);
+            case "-message" -> outputStream.writeObject(messages);
         }
     }
 
     // =============================================================================
 
-    public ArrayList<String> getMessages() {
+    public ArrayList<ApplyClientConnection> getMessages() {
         return messages;
     }
 
-    public void setMessages(ArrayList<String> messages) {
+    public void setMessages(ArrayList<ApplyClientConnection> messages) {
         this.messages = messages;
     }
 
@@ -107,55 +108,76 @@ public class Connection extends Thread {
     }
     // =============================================================================
 
-
-    public void init(String connectionName) {
-        System.out.println("Name: " + connectionName);
+    /**
+     * Function responsible to change the name of the connection with the name received from the parameter
+     * @param connectionName The new nanme of the connection
+     * @throws IOException
+     */
+    public void commandChangeConnectionName(String connectionName) throws IOException {
         this.connectionName = connectionName;
+        outputStream.writeObject("Connection Name: " + connectionName);
     }
 
-    public void help(String[] action) {
-        System.out.println("Entrou help");
-        String text = "\nStandard commands\n\n" +
-                "-list -> list of all users connected in the serve\n" +
-                "-help -> show all the commands available\n" +
-                "-messages -> show the messages received from the serve or anothers clients\n" +
-                "-connect <connection name> -> send a message to <connection name> asking to make a channel\n";
-        writeConnection(action, text);
+    //Send to the client the commands available
+    public void commandHelp() throws IOException {
+        String text =
+                "\nStandard Commands =============================\n" +
+                        "-list -> list of all users connected in the serve\n" +
+                        "-init -> change the name of the connection\n" +
+                        "-help -> show all the commands available\n" +
+                        "-messages -> show the messages received from the serve or anothers clients\n" +
+                        "-connect <connection name> -> send a message to <connection name> asking to make a channel\n" +
+                        "=================================================";
+        outputStream.writeObject(text);
     }
-
-    public void connectionsList(String[] action) {
-        String connections = "Users online in the server\n";
+    //Send to the client the list of all users connect in the server
+    public void commandListOfUsers() throws IOException {
+        String text = "Users online in the server =====================\n";
         int i = 1;
         for (Connection item : connectionsAvailable) {
-            connections = connections + "(" + i + ") " + item.getConnectionName() + "\n";
+            text = text + "(" + i + ") " + item.getConnectionName() + "\n";
             i++;
         }
-        writeConnection(action, connections);
+        text = text + "=================================================";
+        outputStream.writeObject(text);
     }
 
-    public void writeConnection(String[] action, String mensage) {
-        try {
-            System.out.println();
-            Connection connection = findConnectionByName(action[0]);
-            if(connection != null) connection.getOutputStream().writeObject(mensage);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
+    /**
+     * Search in the arraylist the connection with the name received from the parameter
+     * @param connectionName The name of the connection
+     * @return the connection
+     */
     public Connection findConnectionByName(String connectionName) {
         return connectionsAvailable.stream().filter(carnet -> connectionName.equals(carnet.getConnectionName())).findFirst().orElse(null);
     }
 
-    public void connectToAnotherClient(String[] action) throws IOException {
-        Connection connection1 = findConnectionByName(action[0]);
-        Connection connection2 = findConnectionByName(this.connectionName);
-        if (connection1 != null && connection2 != null) {
+    /**
+     * Function responsible to invite another client to create a private channel
+     * @param action variable with the name of the client that will be invite
+     * @throws IOException
+     */
+    public void commandConnectToAnotherClient(String[] action) throws IOException {
+        Connection connection1 = findConnectionByName(action[1]);
+        if (connection1 != null) {
             String ip = socket.getInetAddress().getLocalHost().getHostAddress();
-            System.out.println("Ip: " + ip);
-            String menssage = "connect " + ip + " " + 1345;
-            new ObjectOutputStream(connection1.getSocket().getOutputStream()).writeObject(menssage);
-            System.out.println("End!");
+
+            String meClient = "The " + connectionName + " want to connect with you!";
+            String meuServer = "You wanted to connect with " + connection1.getConnectionName() + " do you want to create the server?";
+
+            ApplyClientConnection aClient = new ApplyClientConnection(ip, 2222, meClient, connectionName);
+            ApplyClientConnection aServer = new ApplyClientConnection(ip, 2222, meuServer, connectionName);
+
+            ArrayList<ApplyClientConnection> aC = connection1.getMessages();
+
+            synchronized (aC) {
+                aC.add(aClient);
+            }
+            synchronized (messages) {
+                messages.add(aServer);
+            }
+            outputStream.writeObject("The message it was send with success!");
+        } else {
+            outputStream.writeObject("Client with the name \"" + action[2] + "\" not found!");
         }
     }
 

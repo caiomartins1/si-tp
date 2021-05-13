@@ -8,7 +8,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 
-public class ThreadListenning extends Thread{
+public class ThreadListening extends Thread{
 
     private Socket socket;
     private ObjectOutputStream outputStream;
@@ -16,7 +16,7 @@ public class ThreadListenning extends Thread{
     private ArrayList<String> messages;
     private String connectionName;
 
-    public ThreadListenning(String connectionName,String ip,int port){
+    public ThreadListening(String connectionName, String ip, int port){
         super();
         this.connectionName = connectionName;
         try {

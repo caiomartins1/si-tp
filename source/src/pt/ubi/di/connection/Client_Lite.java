@@ -1,4 +1,4 @@
-package pt.ubi.di.Model;
+package pt.ubi.di.connection;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -12,7 +12,13 @@ public class Client_Lite {
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
 
-    public Client_Lite(String ip,int port) {
+    /**
+     * Constructor to create a new client_lite,
+     * responsible to create a new connection private between a server_lite and a client_lite
+     * @param ip of the serve_lite
+     * @param port of the connection
+     */
+    public Client_Lite(String ip, int port) {
         this.ip = ip;
         this.port = port;
 
@@ -21,7 +27,7 @@ public class Client_Lite {
             inputStream = new ObjectInputStream(socket.getInputStream());
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             System.out.println("Client created!");
-            while(true){
+            while (true) {
                 System.out.println("Waiting message!");
                 System.out.println("Message: " + inputStream.readObject());
             }

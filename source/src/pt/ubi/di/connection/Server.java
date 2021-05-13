@@ -1,5 +1,6 @@
 package pt.ubi.di.connection;
 
+import pt.ubi.di.Model.ApplyClientConnection;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -11,14 +12,18 @@ public class Server {
     private Socket socket;
     private ArrayList<Connection> connectionsAvailable;
 
+    /**
+     * Constructor to create a normal server
+     * @param port The port of the server
+     */
     public Server(int port) {
         connectionsAvailable = new ArrayList<>();
         try {
             serverSocket = new ServerSocket(port);
+            System.out.println("Waiting new connections!");
             while (true) {
-                System.out.println("Waiting new connections!");
                 socket = serverSocket.accept();
-                connectionsAvailable.add(new Connection(socket,connectionsAvailable));
+                connectionsAvailable.add(new Connection(socket, connectionsAvailable));
             }
         } catch (IOException e) {
             System.out.println("Erro: " + e.getMessage());
