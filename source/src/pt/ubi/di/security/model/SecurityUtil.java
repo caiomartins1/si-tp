@@ -1,6 +1,10 @@
 package pt.ubi.di.security.model;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -13,7 +17,7 @@ import java.util.Random;
 public class SecurityUtil {
 
     //TODO should I keep it like this or rethink it
-    //static SecureRandom secureRandomGenerator = new SecureRandom();
+    static SecureRandom secureRandomGenerator = new SecureRandom(); // uses SHA1PRNG
     static Random random = new Random();
 
     /**
@@ -30,7 +34,7 @@ public class SecurityUtil {
     }
 
     /**
-     * Generates a safe prime number,TODO: not *truly random* (try to use secureRandom) for seeding
+     * Generates a safe prime number
      * Harder to attack Takes longer to generate
      * @param bitLength amount of bits desired
      * @param verbose print messages
@@ -44,20 +48,21 @@ public class SecurityUtil {
             BigInteger prime = generatePrime(bitLength,false);
             if (verbose)
                 System.out.print("*");
-            flag = checkIfSafePrime(prime, 0,false);
+            flag = checkIfSafePrime(prime, 1,false);
             if (verbose)
-                System.out.print(".");
+                System.out.print("+");
             if (flag) {
                 return prime;
             }
         } while (true);
     }
 
-    /**
-     * Need to optmize
+    /**TODO might change for secureRandomGenerator
+     * Generate a random BigInteger by giving a maxValue
+     * Uses java.util.Random
      * @param maxValue max number
      * @param verbose print messages
-     * @return random number
+     * @return random number BigInteger
      */
     public static BigInteger generateNumber(BigInteger maxValue, boolean verbose) {
         BigInteger number;
@@ -67,6 +72,24 @@ public class SecurityUtil {
         if (verbose)
             System.out.println("--->Random number: "+number.toString());
         return number;
+    }
+
+    /**
+     *
+     * @param byteSize
+     * @return
+     */
+    public static byte[] generateNumber(int byteSize) {
+        byte[] bytesArray = new byte[byteSize];
+        for (int i=0;i<byteSize;i++) {
+            byte[] tmp = new byte[1];
+            secureRandomGenerator.nextBytes(tmp);
+            if ((int)tmp[0]<0) {//dafuq does this do TODO
+                tmp[0] += 128;
+            }
+            bytesArray[i]=tmp[0];
+        }
+        return bytesArray;
     }
 
     /**
@@ -148,6 +171,33 @@ public class SecurityUtil {
         if (value.compareTo(BigInteger.TWO)>0) {
             storage.add(value);
         }
+    }
+
+    /**
+     * TODO
+     * @param byteArray
+     * @return
+     */
+    public static String byteToString(byte[] byteArray) {
+        return new String(byteArray,StandardCharsets.UTF_8);
+    }
+
+    /**
+     * TODO
+     * @param algo
+     * @param message
+     * @return
+     */
+    public static byte[] Hash(String algo,byte[] message) {
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance(algo);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        assert md != null;
+        md.update(message);
+        return md.digest();
     }
 
     /**
