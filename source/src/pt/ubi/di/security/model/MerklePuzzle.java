@@ -56,7 +56,7 @@ public class MerklePuzzle {
     @Override
     public String toString() {
         return "MerklePuzzle{" +
-                "puzzle=" + Arrays.toString(puzzle) +
+                "puzzle=" + SecurityUtil.byteToString(puzzle) +
                 ", sizeCipherMessage=" + sizeCipherMessage +
                 ", sizeKey=" + sizeKey +
                 ", totalSize=" + totalSize +

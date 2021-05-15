@@ -31,7 +31,14 @@ public class Aplicacao {
                 servidor.ConectarCliente(2222);
                 break;
             case "3":
-                SecurityMP aa = new SecurityMP(1);
+                /*SecurityDH a =new SecurityDH(4096,true);
+                a.generateValues(false);
+                SecurityDH b =new SecurityDH(a.getG(),a.getP());
+                b.generateValues(false);
+                a.generateKey(b.getX());
+                b.generateKey(a.getX());*/
+
+                SecurityMP a = new SecurityMP(500000);
                 break;
         }
     }

@@ -135,6 +135,24 @@ public class SecurityUtil {
     }
 
     /**
+     * @param byteArr byte array to be converted to a hex String
+     * @return String representation of hex value.
+     * <p>
+     * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
+     */
+    public static String byteArrayToHex(byte[] byteArr) {
+        BigInteger value = new BigInteger(1, byteArr);
+        String hex = value.toString(16);
+
+        int paddingLength = (byteArr.length * 2) - hex.length();
+        if (paddingLength > 0) {
+            return String.format("%0" + paddingLength + "d", 0) + hex;
+        } else {
+            return hex;
+        }
+    }
+
+    /**
      * Function to find prime factors of a prime number, used to find a generator, Alternative Version, LESS time consuming
      * It finds one or two prime factors only!!!!
      * Chance it might not work everytime?
@@ -183,10 +201,10 @@ public class SecurityUtil {
     }
 
     /**
-     * TODO
-     * @param algo
-     * @param message
-     * @return
+     * Function to create a hash of a message
+     * @param algo String of algorithm to use
+     * @param message String of message to digest
+     * @return byte[] - array of bytes of the message digest (hash)
      */
     public static byte[] Hash(String algo,byte[] message) {
         MessageDigest md = null;
