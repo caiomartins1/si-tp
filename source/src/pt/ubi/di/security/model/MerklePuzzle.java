@@ -55,12 +55,10 @@ public class MerklePuzzle {
 
     @Override
     public String toString() {
-        return "MerklePuzzle{" +
-                "puzzle=" + SecurityUtil.byteToString(puzzle) +
+        return  "puzzle=" + SecurityUtil.byteArrayToString(puzzle) +
                 ", sizeCipherMessage=" + sizeCipherMessage +
                 ", sizeKey=" + sizeKey +
                 ", totalSize=" + totalSize +
-                ", bytesToGuess=" + bytesToGuess +
-                '}';
+                ", bytesToGuess=" + bytesToGuess;
     }
 }

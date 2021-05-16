@@ -38,7 +38,7 @@ public class Aplicacao {
                 a.generateKey(b.getX());
                 b.generateKey(a.getX());*/
 
-                SecurityMP a = new SecurityMP(500000);
+                SecurityMP a = new SecurityMP(1);
                 break;
         }
     }
