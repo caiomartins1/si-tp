@@ -6,7 +6,7 @@ import java.io.InputStreamReader;
 
 public class Validations {
 
-    public static String readString ()
+    public static String readString()
     {
         BufferedReader canal;
         canal = new BufferedReader ( new InputStreamReader(System.in));
