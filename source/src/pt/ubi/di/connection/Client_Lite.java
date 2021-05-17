@@ -1,9 +1,13 @@
 package pt.ubi.di.connection;
 
+import pt.ubi.di.Model.Validations;
+import pt.ubi.di.security.model.SecurityDH;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Objects;
 
 public class Client_Lite {
     private final String ip;
@@ -28,8 +32,25 @@ public class Client_Lite {
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             System.out.println("Client created!");
             while (true) {
-                System.out.println("Waiting message!");
-                System.out.println("Message: " + inputStream.readObject());
+                System.out.print("Waiting for messages.....");
+
+                String option =(String) inputStream.readObject();
+
+                switch (option) {
+                    case "dh":
+                        SecurityDH a = (SecurityDH) inputStream.readObject();
+                        SecurityDH b = new SecurityDH(a.getG(),a.getP(),false);
+                        b.generateValues(false);
+                        outputStream.writeObject(b);
+                        b.generateKey(a.getX());
+                        break;
+                    default:
+                        break;
+                }
+                /*System.out.println("Write the message!");
+                outputStream.writeObject();*/
+                /*System.out.println("Waiting message!");
+                inputStream.readObject();*/
             }
         } catch (IOException | ClassNotFoundException e) {
             System.out.println(e.getMessage());

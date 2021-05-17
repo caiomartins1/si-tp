@@ -1,6 +1,7 @@
 package pt.ubi.di.connection;
 
-import pt.ubi.di.Model.*;
+import pt.ubi.di.Model.ApplyClientConnection;
+import pt.ubi.di.Model.Validations;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -8,7 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 
-public class Client {
+public class ClientBob {
 
     private final String ip;
     private final int port;
@@ -18,10 +19,10 @@ public class Client {
     private ObjectOutputStream outputStream;
 
     //TODO: just to test
-    public Client() {
+    public ClientBob() {
         this.ip = "127.0.0.1";
         this.port = 1234;
-        this.connectionName = "Alice";
+        this.connectionName = "Bob";
         try {
             socket = new Socket(ip, port);
             inputStream = new ObjectInputStream(socket.getInputStream());
@@ -39,7 +40,7 @@ public class Client {
      * @param port           The port open to connect to the server
      * @param connectionName The name of the connection
      */
-    public Client(String ip, int port, String connectionName) {
+    public ClientBob(String ip, int port, String connectionName) {
         this.ip = ip;
         this.port = port;
         this.connectionName = connectionName;
@@ -111,6 +112,6 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        Client client = new Client();
+        ClientBob client = new ClientBob();
     }
 }
