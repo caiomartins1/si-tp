@@ -35,9 +35,7 @@ public class Client_Lite {
             System.out.println("Client created!");
             while (true) {
                 System.out.print("Waiting for messages.....");
-
                 String option =(String) inputStream.readObject();
-
                 switch (option) {
                     case "dh":
                         SecurityDH a = (SecurityDH) inputStream.readObject();

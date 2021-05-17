@@ -47,4 +47,15 @@ public class ApplyClientConnection implements Serializable {
     public void setConnectionName(String connectionName) {
         ConnectionName = connectionName;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(obj.getClass().getSimpleName().equals((ApplyClientConnection.class).getSimpleName())){
+            return ((ApplyClientConnection) obj).getConnectionName().equals(ConnectionName) &&
+                    ((ApplyClientConnection) obj).getIP().equals(IP) &&
+                    ((ApplyClientConnection) obj).getMessage().equals(Message) &&
+                    ((ApplyClientConnection) obj).getPort() == Port;
+        }
+        return false;
+    }
 }
