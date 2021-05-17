@@ -6,11 +6,11 @@ import pt.ubi.di.security.model.SecurityMP;
 
 public class Application {
     public static void main(String[] args) {
-        /*String ip = "127.0.0.1";
+        String ip = "127.0.0.1";
         int port = 1234;
-        String name = "Name";
-        Client c = new Client(ip, port, name);//commented*/
+        String name = "Vinícius";
+        Client c = new Client(ip, port, name);
 
-        SecurityMP a=new SecurityMP(1,32,16,2);
+        //SecurityMP a=new SecurityMP(1,32,16,2);
     }
 }

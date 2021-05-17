@@ -16,6 +16,7 @@ public class Client {
     private Socket socket;
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
+    private boolean working = true;
 
     //TODO: just to test
     public Client() {
@@ -53,35 +54,68 @@ public class Client {
         startConnection();
     }
 
-    // Initialize the client with the name in the connectionName
+    /**
+     * Start the connection, wait the client type a command in the terminal to send the input to the server
+     * TODO: now we can call several command in the same time as: -list -list -help -connect Alice, and will be call the server.
+     */
     public void startConnection() {
-        String[] ans = {"-init", connectionName};
+        String[] ans = {"init", connectionName};
         try {
             outputStream.writeObject(ans);
             System.out.println(inputStream.readObject());
-            while (true) {
-                System.out.print("Command>");
-                ans = Validations.readString().split(" ");
-                outputStream.writeObject(ans);
-                switch (ans[0]) {
-                    case "-list":
-                    case "-help":
-                    case "-init":
-                    case "-connect":
-                        System.out.println(inputStream.readObject());
-                        break;
-                    case "-message":
-                        ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
-                        handleMessages(aP);
-                        break;
-                    default:
-                        System.out.println("The command \"" + ans[0] + "\" not found!\nTry Again or use \"-help\"");
-                        break;
+            while (working) {
+                System.out.print("Commands>");
+                ans = validInputs(Validations.readString().split("-"));//TODO: added, here is call the validInput
+                for (String item : ans) {
+                    String[] option = item.split(" ");
+                    outputStream.writeObject(option);
+                    switch (option[0]) {
+                        case "list":
+                        case "help":
+                        case "init":
+                        case "connect":
+                            System.out.println(inputStream.readObject());
+                            break;
+                        case "start"://Now we can start the connection in the same time we invite another client (if need help type -help in the terminal)
+                            Server_Lite sl = new Server_Lite(2222);
+                            break;
+                        case "exit": //Now we can close the connection
+                            socket.close();
+                            outputStream.close();
+                            inputStream.close();
+                            working = false;
+                            break;
+                        case "invites":
+                            ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
+                            handleMessages(aP);
+                            break;
+                        default:
+                            System.out.println("The command \"-" + option[0] + "\" not found!\nTry Again or use \"-help\"");
+                            break;
+                    }
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Valid the input received from the client
+     * TODO: need to change this function because, in the moment it is used the "split("-")"  for some reason it is added in the ans the char "", with this function it is removed the char "".
+     * @param ans the strings separated with the "-"
+     * @return return the ans without the char "" -> (char empty or null, i dont know what it is this)
+     */
+    private String[] validInputs(String[] ans) {
+        String[] option = new String[ans.length-1];
+        int i = 0;
+        for (String item : ans) {
+            if(!item.equals("")){
+                option[i] = item;
+                i++;
+            }
+        }
+        return option;
     }
 
     /**
