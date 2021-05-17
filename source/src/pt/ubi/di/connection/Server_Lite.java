@@ -41,13 +41,19 @@ public class Server_Lite {
                     String[] options = Objects.requireNonNull(Validations.readString()).split(" ");
                     switch (options[0]) {
                         case "-dh":
+                            System.out.println("_____________Starting Diffie Hellman key exchange_____________");
                             outputStream.writeObject("dh");//inform KAP to use
-                            SecurityDH a = new SecurityDH(Integer.parseInt(options[1]),false);//TODO improve parameter (how it works)
-                            outputStream.writeObject(a);
-                            SecurityDH b = (SecurityDH) inputStream.readObject();
-                            a.generateKey(b.getX());
+                            SecurityDH factoryDH;
+                            if(options.length<2)
+                                factoryDH = new SecurityDH(1024,false);//TODO improve parameter (how it works)
+                            else
+                                factoryDH = new SecurityDH(Integer.parseInt(options[1]),false);
+                            outputStream.writeObject(factoryDH);
+                            SecurityDH resultDH = (SecurityDH) inputStream.readObject();
+                            factoryDH.generateKey(resultDH.getX());
                             break;
                         case "-mkp":
+                            System.out.println("_____________Starting Merkle Puzzles key exchange_____________");
                             outputStream.writeObject("mkp");//inform KAP to use
                             SecurityMP factoryMP = new SecurityMP();
                             outputStream.writeObject(factoryMP);

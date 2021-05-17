@@ -34,10 +34,11 @@ public class Client_Lite {
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             System.out.println("Client created!");
             while (true) {
-                System.out.print("Waiting for messages.....");
+                System.out.print("Waiting for messages.....\n");
                 String option =(String) inputStream.readObject();
                 switch (option) {
                     case "dh":
+                        System.out.println("_____________Starting Diffie Hellman key exchange_____________");
                         SecurityDH a = (SecurityDH) inputStream.readObject();
                         SecurityDH b = new SecurityDH(a.getG(),a.getP(),false);
                         b.generateValues(false);
@@ -45,6 +46,7 @@ public class Client_Lite {
                         b.generateKey(a.getX());
                         break;
                     case "mkp":
+                        System.out.println("_____________Starting Merkle Puzzles key exchange_____________");
                         SecurityMP factoryMP = (SecurityMP) inputStream.readObject();
                         SecurityMP resultMP = new SecurityMP(factoryMP.getPuzzles());
                         resultMP.encryptIndex();

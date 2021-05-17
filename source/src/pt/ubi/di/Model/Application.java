@@ -11,12 +11,5 @@ public class Application {
         int port = 1234;
         String name = "Vinícius";
         Client c = new Client(ip, port, name);
-
-        integration-mp
-        SecurityMP x =new SecurityMP(10,16,4,2,true);
-        SecurityMP y =new SecurityMP(x.getPuzzles());
-        y.encryptIndex();
-        x.solveIndex(y.getFinalSolvedPuzzle());
-        //SecurityMP a=new SecurityMP(1,32,16,2);
     }
 }
