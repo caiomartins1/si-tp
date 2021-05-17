@@ -59,6 +59,7 @@ public class SecurityUtil {
 
     /**
      * Generate a random BigInteger by giving a maxValue<p>
+     *     0<=random<maxValue
      * Uses java.util.Random
      * @param maxValue BigInteger - max number
      * @param verbose boolean - print messages
@@ -254,7 +255,7 @@ public class SecurityUtil {
      * @param message byte[] - byte array of message to digest
      * @return byte[] - array of bytes of the message digest (hash)
      */
-    public static byte[] Hash(String algo,byte[] message) {
+    public static byte[] hash(String algo,byte[] message) {
         MessageDigest md = null;
         try {
             md = MessageDigest.getInstance(algo);
@@ -264,6 +265,16 @@ public class SecurityUtil {
         assert md != null;
         md.update(message);
         return md.digest();
+    }
+
+    /**
+     * Function to compare hashes and check if they are equal
+     * @param hash1 byte[] - byte array of first hash
+     * @param hash2 byte[] - byte array of second hash
+     * @return boolean - true if they are equal false if not
+     */
+    public static boolean checkHash(byte[] hash1,byte[] hash2) {
+        return MessageDigest.isEqual(hash1,hash2);
     }
 
     /**
@@ -292,7 +303,7 @@ public class SecurityUtil {
      * @param number int - number to convert
      * @return byte[] - array byte representation of the int number
      */
-    public static byte[] IntToByte(int number) {
+    public static byte[] intToByte(int number) {
         return BigInteger.valueOf(number).toByteArray();
     }
 
@@ -301,24 +312,7 @@ public class SecurityUtil {
      * @param number byte[] - number to convert
      * @return int - int representation of the byte[] number
      */
-    public static int ByteToInt(byte[] number) {
+    public static int byteToInt(byte[] number) {
         return new BigInteger(number).intValue();
-    }
-
-    /**
-     * Power for BigInteger
-     * WARNING probably not a good idea to use it, results are bound to be f*cking crazy
-     * @param base base for pow
-     * @param exponent exponent for pow
-     * @return result of base^exponent
-     */
-    public static BigInteger powBig(BigInteger base,BigInteger exponent) {
-        BigInteger originalBase = base;
-        exponent= exponent.subtract(BigInteger.ONE);
-        while (exponent.signum() !=0) {
-            base = base.multiply(originalBase);
-            exponent = exponent.subtract(BigInteger.ONE);
-        }
-        return base;
     }
 }

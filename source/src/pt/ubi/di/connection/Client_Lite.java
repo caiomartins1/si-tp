@@ -1,7 +1,9 @@
 package pt.ubi.di.connection;
 
 import pt.ubi.di.Model.Validations;
+import pt.ubi.di.security.model.MerklePuzzle;
 import pt.ubi.di.security.model.SecurityDH;
+import pt.ubi.di.security.model.SecurityMP;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -43,6 +45,12 @@ public class Client_Lite {
                         b.generateValues(false);
                         outputStream.writeObject(b);
                         b.generateKey(a.getX());
+                        break;
+                    case "mkp":
+                        SecurityMP factoryMP = (SecurityMP) inputStream.readObject();
+                        SecurityMP resultMP = new SecurityMP(factoryMP.getPuzzles());
+                        resultMP.encryptIndex();
+                        outputStream.writeObject(resultMP.getFinalSolvedPuzzle());
                         break;
                     default:
                         break;
