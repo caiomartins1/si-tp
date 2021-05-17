@@ -1,29 +1,14 @@
 package pt.ubi.di.security.model;
 
-import java.nio.charset.StandardCharsets;
+import java.io.Serializable;
+import java.math.BigInteger;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Random;
 
 /**
- * //TODO had verbose
- * //TODO multiple/variable sizes
  * //TODO different ciphers
- * //TODO fix try catches
- *
- * Need to create puzzle
- * Cipher the puzzle <- this the puzzle the solution is solving the cipher (5min per each many puzzles means
- * more time
- *
- * maybe create class for chiper
- *
- * do this multiple times
- *
- * a puzzle has a key and a number in there (random)
- * send puzzles wait for number that was solved
- *
+ * //TODO add comment
  *  plaintext   |  16B   |   4B  |        20B         | TOTAL 40B
  *  message     | secret | index | SHA1(secret|index) |
  *
@@ -33,48 +18,182 @@ import java.util.Random;
  *  puzzle     |        40B        |       6B        | TOTAL 46B
  *             | message XOR noise | key(incomplete) |
  */
-public class SecurityMP {
+public class SecurityMP implements Serializable {
+
     private final int N; //number of puzzles
-    private final int secretSize; //number of puzzles
-    private final int keySize; //number of puzzles
-    private final int bytesToGuess; //number of puzzles
-    private final byte[] choosenKey; //number of puzzles
-    ArrayList<Integer> ids; //all ids available
-
-    ArrayList<MerklePuzzle> puzzles; //list of puzzles
-
-    Random rand;
-
-    /** TODO Need to do validation
-     * Constructs the interaction
-     * creates N puzzles to be sent
-     * @param N amount of puzzles
-     */
-    public SecurityMP(int N, int secretSize,int keySize,int bytesToGuess) {
-        rand = new Random();
-        this.N = N;
-        this.secretSize = secretSize;
-        this.keySize = keySize;
-        this.bytesToGuess = bytesToGuess;
-        choosenKey = new byte[secretSize];
-        this.ids = new ArrayList<>();
-        this.puzzles = new ArrayList<>();
-        for(int i=1;i<=N;++i) {
-            ids.add(i);
-        }
-        for(int i=0;i<N;++i) {
-            puzzles.add(CreatePuzzle(secretSize,keySize,bytesToGuess));
-        }
-        //System.out.println("--------\n"+            puzzles.get(0).toString() + "--------\n");
-        //SolvePuzzle(puzzles.remove(0));
-
-        SolvePuzzleRec(puzzles.get(0));
-    }
-
+    private final int secretSize; //size of the secret key to be exchanged
+    private final int keySize; //size of the key to be used for encryption
+    private final int bytesToGuess; //amount of bytes to be omitted from the encryption key
+    private static final int HASHSIZE=20; // size of the hash produced by SHA1
+    private boolean flag; // flag to know if solution was found
 
     /**
-     * Create a single puzzle:
-     * PUZZLE(48B): puzzle message XOR noise(40B) | key(8B)
+     * A byte array of the chosen secret key:
+     * The key to be used for secure communication
+     */
+    private byte[] chosenSecretKey;
+    /**
+     * A byte array of the index of the secret key:
+     * Index given to the secret key (not position on the array list)
+     */
+    private int indexOfSecretKey;
+    /**
+     * A merkle puzzle with the encrypted index and index hash of the solved puzzle
+     * to return to sender
+     */
+    MerklePuzzle finalSolvedPuzzle;
+
+    /**
+     * Array list of all the available ids to give to the puzzles
+     */
+    private final ArrayList<Integer> ids;
+
+    /**
+     * Array list of all the created puzzles
+     */
+    private ArrayList<MerklePuzzle> puzzles; //list of puzzles
+    /**
+     * Array list of all the keys that where created to send in puzzle format
+     */
+    private final ArrayList<byte[]> secretKeys; //list of puzzles
+
+    Random rand = new Random();
+
+    /**
+     * <p>Constructor to setup a key exchange using Merkle Puzzle</p>
+     * <p>Will create a N amount of puzzles with all the parameters given and save and arrayList of them</p>
+     * @param N int - amount of puzzles to create
+     * @param secretSize int - size of the secret key to be exchanged
+     * @param keySize int - size of the key to be used for encryption
+     * @param bytesToGuess int - amount of bytes to be omitted from the encryption key (higher values means more time and more secure)
+     * @param verbose boolean - allow verbose
+     */
+    public SecurityMP(int N, int secretSize,int keySize,int bytesToGuess,boolean verbose) {
+        if(N>0)
+            this.N = N;
+        else {
+            System.out.println("Amount of puzzles invalid - 10000 being used as default.");
+            this.N = 10000;
+        }
+        if(secretSize>0)
+            this.secretSize = secretSize;
+        else {
+            System.out.println("Secret key size invalid - 32 being used as default.");
+            this.secretSize = 32;
+        }
+        if(keySize>0)
+            this.keySize = keySize;
+        else {
+            System.out.println("Encryption key size invalid - 16 being used as default.");
+            this.keySize = 16;
+        }
+        if(0<bytesToGuess && bytesToGuess<=keySize)
+            this.bytesToGuess = bytesToGuess;
+        else {
+            if(this.keySize==1) {
+                System.out.println("Bytes to be removed from key invalid - 1 being used as default.");
+                this.bytesToGuess = 1;
+            }
+            else {
+                System.out.println("Bytes to be removed from key invalid - 2 being used as default.");
+                this.bytesToGuess = 2;
+            }
+        }
+        this.chosenSecretKey = new byte[secretSize];
+        flag = false;
+        this.ids = new ArrayList<>();
+        this.puzzles = new ArrayList<>();
+        this.secretKeys = new ArrayList<>();
+
+        for(int i=1;i<=N;++i) { ids.add(i); }
+        if(verbose)
+            System.out.println("Creating puzzles.....");
+        for(int i=0;i<N;++i) {
+            if(verbose)
+                System.out.print("*");
+            puzzles.add(CreatePuzzle(secretSize,keySize,bytesToGuess));
+        }
+    }
+
+    /**
+     * <p>Constructor for an already created set of puzzles</p>
+     * <p>Will solve a given puzzle, creating</p>
+     * @param puzzles ArrayList<MerklePuzzle> - list of puzzles
+     * @param index int - index of the desired puzzle to solve (on the list)
+     */
+    public SecurityMP(ArrayList<MerklePuzzle> puzzles,int index) {
+        this(puzzles.size(),puzzles.get(0).getSizeSecret(),puzzles.get(0).getSizeKey(),puzzles.get(0).getBytesToGuess(),false);
+        this.puzzles = puzzles;
+        solve(index);
+    }
+
+    /**
+     * <p>Constructor for an already created set of puzzles</p>
+     * @param puzzles ArrayList<MerklePuzzle> - list of puzzles
+     */
+    public SecurityMP(ArrayList<MerklePuzzle> puzzles) {
+        this(puzzles.size(),puzzles.get(0).getSizeSecret(),puzzles.get(0).getSizeKey(),puzzles.get(0).getBytesToGuess(),false);
+        this.puzzles = puzzles;
+        solve(-1);
+    }
+
+    /**
+     * <p>Empty constructor uses default values</p>
+     * <p>Will create a N amount of puzzles with all the parameters given and save and arrayList of them</p>
+     * <p>N=100 secret=32 key=16 bytesMissing=3</p>
+     */
+    public SecurityMP() {
+        this(10000,32,16,3,false);
+    }
+
+    /**
+     * <p>Constructor that allows you to choose how many puzzles to create</p>
+     * <p>Uses default values for the rest</p>
+     * <p>secret=32 key=16 bytesMissing=3</p>
+     * <p>Will create a N amount of puzzles with all the parameters given and save and arrayList of them</p>
+     * @param N int - amount of puzzles to create
+     */
+    public SecurityMP(int N) {
+        this(N,32,16,3,false);
+    }
+
+    /**
+     * <p>Constructor that allows you to choose how many puzzles to create and secret key size</p>
+     * <p>Uses default values for the rest</p>
+     * <p>key=16 bytesMissing=3</p>
+     * <p>Will create a N amount of puzzles with all the parameters given and save and arrayList of them</p>
+     * @param N int - amount of puzzles to create
+     * @param secretSize int - how many bytes should the secret key have
+     */
+    public SecurityMP(int N,int secretSize) {
+        this(N,secretSize,16,3,false);
+    }
+
+    /**
+     * <p>Constructor that allows you to choose how many puzzles to create, secret key size and how many bytes to remove from the key</p>
+     * <p>Uses default values for the rest<p>
+     * <p>key=16</p>
+     * <p>Will create a N amount of puzzles with all the parameters given and save and arrayList of them</p>
+     * @param N int - amount of puzzles to create
+     * @param secretSize int - how many bytes should the secret key have
+     * @param bytesToGuess int - how many bytes should be removed from the key
+     */
+    public SecurityMP(int N, int secretSize,int bytesToGuess) {
+        this(N,secretSize,16,bytesToGuess,false);
+    }
+
+    private void solve(int puzzleToGuess) {
+        if (0<puzzleToGuess && puzzleToGuess<puzzles.size()) {
+            solvePuzzleRec(puzzleToGuess);
+        }
+        else {
+            solvePuzzleRec(SecurityUtil.generateNumber(BigInteger.valueOf(puzzles.size()),false).intValue());
+        }
+    }
+
+    /**
+     * <p>Create a single puzzle:</p>
+     * <p>PUZZLE(48B): puzzle message XOR noise(40B) | key(8B)</p>
      * @param secretSize int - size of secret key
      * @param keySize int - size of key used to generate noise -> "encrypt message"
      * @param bytesToGuess int - amount of bytes to remove from key
@@ -83,145 +202,214 @@ public class SecurityMP {
     private MerklePuzzle CreatePuzzle(int secretSize, int keySize, int bytesToGuess) {
         byte[] key = SecurityUtil.generateNumber(keySize);
         byte[] keyShorted = new byte[key.length-bytesToGuess];
-        for(int i=0;i<key.length-bytesToGuess;i++)
+        for(int i=0;i<key.length-bytesToGuess;i++)//TODO
             keyShorted[i]=key[i+bytesToGuess];
-        byte[] message = CreateMessage(secretSize);
-        byte[] cipher = OneTimePadEncrypt(message,CreateNoise(key,message.length));
+        byte[] message = createMessage(secretSize);
+        byte[] cipher = oneTimePadEncrypt(message,createNoise(key,message.length));
         byte[] puzzle = new byte[cipher.length+keyShorted.length];
         System.arraycopy(cipher,0,puzzle,0,cipher.length);
         System.arraycopy(keyShorted,0,puzzle,cipher.length,keyShorted.length);
 
         /*System.out.println("__________________Create Puzzle__________________");
-        System.out.println("KEY:"+SecurityUtil.byteArrayToHex(key));
-        System.out.println("KEY SIZE:"+key.length);
-        System.out.println("PARTIAL KEY:"+SecurityUtil.byteArrayToHex(keyShorted));
-        System.out.println("PARTIAL KEY SIZE:"+keyShorted.length);
-        System.out.println("cipher:"+SecurityUtil.byteArrayToString(cipher));
-        System.out.println("cipher SIZE:"+cipher.length);
-        System.out.println("puzzle:"+SecurityUtil.byteArrayToString(puzzle));
-        System.out.println("puzzle SIZE:"+puzzle.length);*/
+        System.out.println("KEY:"+SecurityUtil.byteArrayToHex(key)+"SIZE: "+key.length);
+        System.out.println("PARTIAL KEY:"+SecurityUtil.byteArrayToHex(keyShorted)+" SIZE:"+keyShorted.length);
+        System.out.println("cipher:"+SecurityUtil.byteArrayToString(cipher)+" SIZE:"+cipher.length);
+        System.out.println("puzzle:"+SecurityUtil.byteArrayToString(puzzle)+" SIZE:"+puzzle.length);*/
 
         return new MerklePuzzle(puzzle,cipher.length,keySize,bytesToGuess,puzzle.length,secretSize);
     }
 
     /**
-     * Create a message to encrypt and send as a puzzle
-     * Example: MESSAGE(40B): secret(16B) | index(4B) | SHA1(secret|index)(20B)
+     * <p>Create a message to encrypt and send as a puzzle</p>
+     * <p>Example: MESSAGE(40B): secret(16B) | index(4B) | SHA1(secret|index)(20B)</p>
      * @param byteSize int - size of the secure key
      * @return message byte[] - in byte array
      */
-    private byte[] CreateMessage(int byteSize) {
+    private byte[] createMessage(int byteSize) {
         byte[] secret = SecurityUtil.generateNumber(byteSize);
-        byte[] index = SecurityUtil.IntToByte(getAvailableID());
-        byte[] digest = SecurityUtil.Hash("SHA1",secret);
+        byte[] index = SecurityUtil.intToByte(getAvailableIDOrder());
+        byte[] digest = SecurityUtil.hash("SHA1",secret);
         byte[] message = new byte[secret.length+index.length+digest.length];
         System.arraycopy(secret,0,message,0,secret.length);
         System.arraycopy(index,0,message,secret.length,index.length);
         System.arraycopy(digest,0,message,secret.length+index.length,digest.length);//TODO need to add index
-
+        secretKeys.add(secret);
         /*System.out.println("__________________Create Message__________________");
-        System.out.println("Message (secret+index+digest) unencrypted(byte):"+SecurityUtil.byteArrayToString(message));
-        System.out.println("Message (secret) unencrypted(hex):"+SecurityUtil.byteArrayToHex(secret));
-        System.out.println("Message size:"+message.length);
-        System.out.println("Secret size:"+secret.length);
-        System.out.println("Index size:"+index.length);
-        System.out.println("msgDigest size:"+digest.length);*/
+        System.out.println("Secret key unencrypted(hex):"+SecurityUtil.byteArrayToHex(secret)+" Size:"+secret.length);
+        System.out.println("hash: "+SecurityUtil.byteArrayToHex(digest)+" Size:"+digest.length);
+        System.out.println("Index: "+SecurityUtil.byteToInt(index)+" Size:"+index.length);*/
         return message;
     }
 
     /**
-     * Create noise to encrypt message with,
+     * Create noise to encrypt message with
      * Example: NOISE(40B): SHA1(key)(20B) | SHA1(SHA1(key))(20B)
      * @param key byte[] - array of bytes to be used to generate noise
      * @param sizeBytes int - size in bytes of the noise
      * @return byte[]- noise in byte array
      */
-    private byte[] CreateNoise(byte[] key, int sizeBytes) {
+    private byte[] createNoise(byte[] key, int sizeBytes) {
         int index = 0;
-        int n = (int) sizeBytes/20;
-        byte[] prevDigest = SecurityUtil.Hash("SHA1",key);
+        int n = sizeBytes /HASHSIZE;
+        byte[] prevDigest = SecurityUtil.hash("SHA1",key);
         byte[] noise = new byte[sizeBytes];
-        System.arraycopy(prevDigest,0,noise,index,(sizeBytes <20) ? noise.length : prevDigest.length);
+        System.arraycopy(prevDigest,0,noise,index,(sizeBytes <HASHSIZE) ? noise.length : prevDigest.length);
         index = prevDigest.length;
         for(int i=1;i<n;i++) {
-            byte[] digest = SecurityUtil.Hash("SHA1",prevDigest);
-            System.arraycopy(digest,0,noise,index,(index <20) ? noise.length : digest.length);
+            byte[] digest = SecurityUtil.hash("SHA1",prevDigest);
+            System.arraycopy(digest,0,noise,index,(index <HASHSIZE) ? noise.length : digest.length);
             index += digest.length;
             prevDigest = digest;
         }
-        //System.out.println("Noise unencrypted(byte):"+SecurityUtil.byteToString(noise));
-        //System.out.println("Noise size:"+noise.length);
         return noise;
     }
 
-    /**
+    /**TODO maybe put this function on UTILs file
      * One time pad encryption by doing --> message XOR key
-     * @param message message to encrypt/decipher in byte[]
-     * @param key key to encrypt/decipher with in byte[]
+     * @param message byte[] - message to encrypt/decipher
+     * @param noise byte[] - noise to encrypt/decipher with
      * @return byte[] of encrypted/decrypted message
      */
-    private static byte[] OneTimePadEncrypt(byte[] message, byte[] key) {
-        if (message.length != key.length) {
-            System.out.println("Key not same size as message");
+    private static byte[] oneTimePadEncrypt(byte[] message, byte[] noise) {
+        if (message.length != noise.length) {
+            System.out.println("Error Key not same size as message");
             return new byte[0];
         }
         byte[] cipherBytes = new byte[message.length];
         for(int i=0;i<message.length;i++) {
-            cipherBytes[i] = (byte) (message[i] ^ key[i]);
+            cipherBytes[i] = (byte) (message[i] ^ noise[i]);
         }
         return cipherBytes;
     }
 
     /**
-     * TODO
-     * @param puzzle
+     * Function that calls a recursive function to solve a given puzzle
+     * @param index int - index of the puzzle to solve (on the list)
      */
-    private void SolvePuzzleRec(MerklePuzzle puzzle) {
+    private void solvePuzzleRec(int index) {
+        MerklePuzzle puzzle = puzzles.get(index);
         byte[] partKey = new byte[puzzle.getSizeKey()];// partKey + values to guess
         System.arraycopy(puzzle.getPuzzle(),puzzle.getSizeCipherMessage(),partKey,puzzle.getBytesToGuess(),partKey.length-puzzle.getBytesToGuess());
+        byte[] cipher = new byte[puzzle.getSizeCipherMessage()];
+        System.arraycopy(puzzle.getPuzzle(),0,cipher,0,cipher.length);
+        flag = false;
         System.out.println("__________________Solving puzzle__________________");
         System.out.println("Puzzle:"+SecurityUtil.byteArrayToString(puzzle.getPuzzle()));
-        System.out.println("Partial key:"+SecurityUtil.byteArrayToHex(partKey));
+        System.out.println("Partial key(hex):"+SecurityUtil.byteArrayToHex(partKey));
 
-        SolvePuzzleAux(puzzle.getBytesToGuess()-1,puzzle,partKey);
+        solvePuzzleAux(puzzle,cipher,puzzle.getBytesToGuess()-1,partKey);
     }
 
     /**
-     * TODO
-     * @param dept
-     * @param puzzle
-     * @param partKey
-     * @return
+     * Function that calls a recursive function to solve a given puzzle
+     * @param puzzle MerklePuzzle - puzzle to solve
      */
-    private void SolvePuzzleAux(int dept,MerklePuzzle puzzle,byte[] partKey) {
-        if(dept<0) {
+    private void solvePuzzleRec(MerklePuzzle puzzle) {
+        byte[] partKey = new byte[puzzle.getSizeKey()];// partKey + values to guess
+        System.arraycopy(puzzle.getPuzzle(),puzzle.getSizeCipherMessage(),partKey,puzzle.getBytesToGuess(),partKey.length-puzzle.getBytesToGuess());
+        byte[] cipher = new byte[puzzle.getSizeCipherMessage()];
+        System.arraycopy(puzzle.getPuzzle(),0,cipher,0,cipher.length);
+        flag = false;
+        System.out.println("__________________Solving puzzle__________________");
+        System.out.println("Puzzle:"+SecurityUtil.byteArrayToString(puzzle.getPuzzle()));
+        System.out.println("Partial key(hex):"+SecurityUtil.byteArrayToHex(partKey));
+
+        solvePuzzleAux(puzzle,cipher,puzzle.getBytesToGuess()-1,partKey);
+    }
+
+    /**
+     * <p>Solve a given puzzle by brute forcing the partial key until the right key is found:</p>
+     * <p>its known that the key is the right one when the hash on the message matches the message digest from the secret found</p>
+     * <p>If a puzzle was found message is printed and the resulting key and index are saved</p>
+     * @param puzzle MerklePuzzle - the puzzle to be solved
+     * @param cipher byte[] - byte array of the cipher to crack
+     * @param dept int - amount of bytes to brute force (depth of the array)
+     * @param partKey byte[] - byte array of the partial key "fill" the blanks with possible values
+     */
+    private void solvePuzzleAux(MerklePuzzle puzzle, byte[] cipher, int dept, byte[] partKey) {
+        if(dept<0 || flag) {
             return;
         }
         for(int i =-128;i<128;i++) {
-            partKey[dept]=(byte) i;
+            //System.out.print(".");TODO
+            partKey[dept]=(byte) i;//try to replicate key
 
-            byte[] noise = CreateNoise(partKey,puzzle.getSizeCipherMessage());
+            byte[] noise = createNoise(partKey,puzzle.getSizeCipherMessage());//try to replicate noise
 
-            byte[] cipher = new byte[puzzle.getSizeCipherMessage()];
-            System.arraycopy(puzzle.getPuzzle(),0,cipher,0,cipher.length);
+            byte[] message = oneTimePadEncrypt(cipher,noise);//try to decipher the cipher
 
-            byte[] decipher = OneTimePadEncrypt(cipher,noise);//TODO fucking stupid variable name change it later
+            byte[] messageDigestExpected = new byte[HASHSIZE];//get the hash in the message
+            System.arraycopy(message,message.length-HASHSIZE,messageDigestExpected,0,messageDigestExpected.length);
 
-            byte[] messageDigestExpected = new byte[20/*TODO SHA1 size*/];
-            System.arraycopy(decipher,decipher.length-20/*TODO SHA1 size*/,messageDigestExpected,0,messageDigestExpected.length);
+            byte[] secretKey = new byte[puzzle.getSizeSecret()];//get the secretKey from the message
+            System.arraycopy(message,0,secretKey,0,secretKey.length);
 
-            byte[] secret = new byte[puzzle.getSizeSecret()];
-            System.arraycopy(decipher,0,secret,0,secret.length);
-            byte[] messageDigestActual = SecurityUtil.Hash("SHA1",secret);
+            byte[] messageDigestActual = SecurityUtil.hash("SHA1",secretKey);//message digest the secretKey
 
-            if(MessageDigest.isEqual(messageDigestActual,messageDigestExpected)) {
-                System.arraycopy(decipher,0,choosenKey,0,choosenKey.length);
-                System.out.println("__________________Puzzle solved__________________");
-                System.out.println("MESSAGE(byte): "+ SecurityUtil.byteArrayToString(decipher));
-                System.out.println("KEY(hex): "+ SecurityUtil.byteArrayToHex(choosenKey));
+            if(SecurityUtil.checkHash(messageDigestActual,messageDigestExpected)) {//compare the hashes if they are equal than means puzzle has been cracked
+                byte[] indexByteArray = new byte[puzzle.getTotalSize()-(puzzle.getSizeKey()-puzzle.getBytesToGuess())-puzzle.getSizeSecret()-HASHSIZE];
+                System.arraycopy(message,0,chosenSecretKey,0,chosenSecretKey.length);//get secretKey
+                System.arraycopy(message,chosenSecretKey.length,indexByteArray,0,indexByteArray.length);//get index
+                indexOfSecretKey = SecurityUtil.byteToInt(indexByteArray);
+                flag = true;
+                System.out.println("\n__________________Puzzle solved__________________");
+                System.out.println("KEY(hex): "+ SecurityUtil.byteArrayToHex(chosenSecretKey));
+                System.out.println("INDEX: "+ indexOfSecretKey);
+                break;
+            }
+            if(flag)
+                return;
+            //System.out.print("*");TODO
+            solvePuzzleAux(puzzle,cipher,dept-1,partKey);
+        }
+    }
+
+    /**
+     * <p>Function that encrypts the index and the index message digest of the solved puzzle, to be sent to the puzzles creator</p>
+     * <p>Saves a MerklePuzzle with the indexEncrypted and indexHashEncrypted of the solved puzzle</p>
+     */
+    public void encryptIndex() {
+        System.out.println("encrypting Index...");
+        byte[] indexOfSecretKeyByte = SecurityUtil.intToByte(indexOfSecretKey);
+        byte[] indexEncrypted = oneTimePadEncrypt(indexOfSecretKeyByte,createNoise(chosenSecretKey,indexOfSecretKeyByte.length));
+        byte[] indexHashEncrypted = oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),createNoise(chosenSecretKey,HASHSIZE));
+        //finalSolvedPuzzle.toStringSolved();
+        finalSolvedPuzzle = new MerklePuzzle(indexEncrypted,indexHashEncrypted);
+    }
+
+    /**
+     * <p>Function that encrypts the index and the index message digest of the solved puzzle, to be sent to the puzzles creator</p>
+     * @return MerklePuzzle - returns a MerklePuzzle with the indexEncrypted and indexHashEncrypted of the solved puzzle
+     */
+    public MerklePuzzle encryptIndexRet() {
+        System.out.println("encrypting Index...");
+        byte[] indexOfSecretKeyByte = SecurityUtil.intToByte(indexOfSecretKey);
+        byte[] indexEncrypted = oneTimePadEncrypt(indexOfSecretKeyByte,createNoise(chosenSecretKey,indexOfSecretKeyByte.length));
+        byte[] indexHashEncrypted = oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),createNoise(chosenSecretKey,HASHSIZE));
+        finalSolvedPuzzle = new MerklePuzzle(indexEncrypted,indexHashEncrypted);
+        return new MerklePuzzle(indexEncrypted,indexHashEncrypted);
+    }
+
+    /**
+     * <p>Function to solve an encrypted index to its matching key</p>
+     * @param puzzle MerklePuzzle - puzzle with the index to solve
+     */
+    public void solveIndex(MerklePuzzle puzzle) {
+        System.out.println("Decrypting index...");
+        System.out.println("AA:"+puzzle.toStringSolved());
+        finalSolvedPuzzle = puzzle;
+        byte[] indexEncryptedTemp = puzzle.getIndexEncrypted();
+        byte[] indexHashEncryptedTemp = puzzle.getIndexHashEncrypted();
+        for(byte[] k : secretKeys) {
+            byte[] index = oneTimePadEncrypt(indexEncryptedTemp,createNoise(k,indexEncryptedTemp.length));
+            byte[] indexHashExpected = oneTimePadEncrypt(indexHashEncryptedTemp,createNoise(k,HASHSIZE));
+            byte[] indexHash = SecurityUtil.hash("SHA1",index);
+            if(SecurityUtil.checkHash(indexHash,indexHashExpected)) {
+                System.out.println("KEY(hex): "+SecurityUtil.byteArrayToHex(k));
+                System.out.println("INDEX: "+SecurityUtil.byteToInt(index));
+                chosenSecretKey = k;
                 return;
             }
-            SolvePuzzleAux(dept-1,puzzle,partKey);
         }
     }
 
@@ -232,5 +420,38 @@ public class SecurityMP {
      */
     private int getAvailableID() {
         return ids.remove(rand.nextInt(ids.size()));
+    }
+
+    /**
+     * Chooses a id by order from the available ones,
+     * removes the chosen one from the pool
+     * @return int id
+     */
+    private int getAvailableIDOrder() {
+        return ids.remove(0);
+    }
+
+    public ArrayList<MerklePuzzle> getPuzzles() {
+        return puzzles;
+    }
+
+    public byte[] getChosenSecretKey() {
+        return chosenSecretKey;
+    }
+
+    public String getChosenSecretKeyToString() {
+        return SecurityUtil.byteArrayToHex(chosenSecretKey);
+    }
+
+    public void setFinalSolvedPuzzle(MerklePuzzle finalSolvedPuzzle) {
+        this.finalSolvedPuzzle = finalSolvedPuzzle;
+    }
+
+    public MerklePuzzle getFinalSolvedPuzzle() {
+        return finalSolvedPuzzle;
+    }
+
+    public int getIndex() {
+        return indexOfSecretKey;
     }
 }

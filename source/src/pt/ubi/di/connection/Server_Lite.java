@@ -3,7 +3,9 @@ package pt.ubi.di.connection;
 
 import pt.ubi.di.Model.ApplyClientConnection;
 import pt.ubi.di.Model.Validations;
+import pt.ubi.di.security.model.MerklePuzzle;
 import pt.ubi.di.security.model.SecurityDH;
+import pt.ubi.di.security.model.SecurityMP;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -39,11 +41,23 @@ public class Server_Lite {
                     String[] options = Objects.requireNonNull(Validations.readString()).split(" ");
                     switch (options[0]) {
                         case "-dh":
+                            outputStream.writeObject("dh");//inform KAP to use
                             SecurityDH a = new SecurityDH(Integer.parseInt(options[1]),false);//TODO improve parameter (how it works)
-                            outputStream.writeObject("dh");
                             outputStream.writeObject(a);
                             SecurityDH b = (SecurityDH) inputStream.readObject();
                             a.generateKey(b.getX());
+                            break;
+                        case "-mkp":
+                            outputStream.writeObject("mkp");//inform KAP to use
+                            SecurityMP factoryMP = new SecurityMP();
+                            outputStream.writeObject(factoryMP);
+                            MerklePuzzle puzzleIndex = (MerklePuzzle) inputStream.readObject();
+                            factoryMP.solveIndex(puzzleIndex);
+                            break;
+                        case "-help":
+                            System.out.println(
+                                    "help?...no."//TODO
+                            );
                             break;
                         default:
                             System.out.println("The command \"" + options[0] + "\" not found!\nTry Again or use \"-help\"");
