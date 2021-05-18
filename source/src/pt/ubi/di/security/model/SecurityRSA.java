@@ -2,10 +2,13 @@ package pt.ubi.di.security.model;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class SecurityRSA {
 
-    BigInteger N, p, q, M, d, e;
+    BigInteger N, p, q, M, d, e, hash;
+    private String hashtext = null;
 
     public SecurityRSA(BigInteger p, BigInteger q) {
         this.p = p;
@@ -50,6 +53,37 @@ public class SecurityRSA {
         //sk = d
     }
 
+    //-------------------------------------------------------
+    //?integridade da mensagem enviada?
+    //construção do hash da mensagem
+    public BigInteger hash_Message(String input){
+        try{
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte [] messageDigest = md.digest(input.getBytes());
+            hash = new BigInteger(messageDigest);
+            //hashtext = hash.toString();
+            //return hashtext;
+            return hash;
+        }catch(NoSuchAlgorithmException e){
+            System.out.println(e.getMessage());
+        }
+    }
+    //-------------------------------------------------------
+    //encriptação do hash da mensagem com a chave privada do utilizador
+    public BigInteger encript_Message(BigInteger hash, BigInteger d, BigInteger N){
+        BigInteger encripted_msg = hash.modPow(d,N);
+        //String encripted_msg = hash.modPow(d,N).toString();
+        return encripted_msg;
+        //return encripted_msg;
+    }
+
+    //decifração do criptograma com a chave publica do utilizador 
+    public BigInteger decript_Message(String hashtext, BigInteger e, BigInteger N){
+        BigInteger decrpt_msg = new BigInteger(new BigInteger(hashtext).modPow(e,N).toByteArray());
+        return decrpt_msg;
+    }
+
+    
     public BigInteger getP(){
         return p;
     }
@@ -66,4 +100,7 @@ public class SecurityRSA {
         return M;
     }
     
+    public String getHashText(){
+        return hashtext;
+    }
 }
