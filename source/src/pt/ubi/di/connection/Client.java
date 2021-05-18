@@ -1,6 +1,8 @@
 package pt.ubi.di.connection;
 
-import pt.ubi.di.Model.*;
+import pt.ubi.di.Model.ApplyClientConnection;
+import pt.ubi.di.Model.Validations;
+import pt.ubi.di.pbkdf.PBKDF2;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -59,42 +61,48 @@ public class Client {
      * TODO: now we can call several command in the same time as: -list -list -help -connect Alice, and will be call the server.
      */
     public void startConnection() {
-        String[] ans = {"init", connectionName};
+        String[] ans = {"-init", connectionName};
         try {
             outputStream.writeObject(ans);
             System.out.println(inputStream.readObject());
             while (working) {
                 System.out.print("Commands>");
-                ans = validInputs(Validations.readString().split("-"));//TODO: added, here is call the validInput
-                for (String item : ans) {
-                    String[] option = item.split(" ");
-                    outputStream.writeObject(option);
-                    switch (option[0]) {
-                        case "list":
-                        case "help":
-                        case "init":
-                        case "connect":
-                            System.out.println(inputStream.readObject());
-                            break;
-                        case "start"://Now we can start the connection in the same time we invite another client (if need help type -help in the terminal)
+//                ans = validInputs(Validations.readString().split("-"));//TODO: added, here is call the validInput
+                ans = Validations.readString().split(" ");
+//                for (String item : ans) {
+                outputStream.writeObject(ans);
+                switch (ans[0]) {
+                    case "-list":
+                    case "-help":
+                    case "-init":
+                    case "-pbk":
+                        PBKDF2.handlePBKDFParams(ans);
+                        break;
+                    case "-connect":
+                        System.out.println(inputStream.readObject());
+                        if (ans[1].equals("-start")) {
                             Server_Lite sl = new Server_Lite(2222);
-                            break;
-                        case "exit": //Now we can close the connection
-                            socket.close();
-                            outputStream.close();
-                            inputStream.close();
-                            working = false;
-                            break;
-                        case "invites":
-                            ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
-                            handleMessages(aP);
-                            break;
-                        default:
-                            System.out.println("The command \"-" + option[0] + "\" not found!\nTry Again or use \"-help\"");
-                            break;
-                    }
+                        }
+                        break;
+                    case "-start"://Now we can start the connection in the same time we invite another client (if need help type -help in the terminal)
+                        Server_Lite sl = new Server_Lite(2222);
+                        break;
+                    case "-exit": //Now we can close the connection
+                        socket.close();
+                        outputStream.close();
+                        inputStream.close();
+                        working = false;
+                        break;
+                    case "-invites":
+                        ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
+                        handleMessages(aP);
+                        break;
+                    default:
+                        System.out.println("The command \"-" + ans[0] + "\" not found!\nTry Again or use \"-help\"");
+                        break;
                 }
             }
+//            }
         } catch (IOException | ClassNotFoundException e) {
             System.out.println("Error: " + e.getMessage());
         }
@@ -103,14 +111,15 @@ public class Client {
     /**
      * Valid the input received from the client
      * TODO: need to change this function because, in the moment it is used the "split("-")"  for some reason it is added in the ans the char "", with this function it is removed the char "".
+     *
      * @param ans the strings separated with the "-"
      * @return return the ans without the char "" -> (char empty or null, i dont know what it is this)
      */
     private String[] validInputs(String[] ans) {
-        String[] option = new String[ans.length-1];
+        String[] option = new String[ans.length - 1];
         int i = 0;
         for (String item : ans) {
-            if(!item.equals("")){
+            if (!item.equals("")) {
                 option[i] = item;
                 i++;
             }
