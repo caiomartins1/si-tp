@@ -75,13 +75,14 @@ public class Client {
                     case "-list":
                     case "-help":
                     case "-init":
-                    case "-pbk":
-                        PBKDF2.handlePBKDFParams(ans);
+                        System.out.println(inputStream.readObject());
                         break;
                     case "-connect":
                         System.out.println(inputStream.readObject());
-                        if (ans[1].equals("-start")) {
-                            Server_Lite sl = new Server_Lite(2222);
+                        if(ans.length==3) {
+                            if (ans[2].equals("-start")) {
+                                Server_Lite sl = new Server_Lite(2222);
+                            }
                         }
                         break;
                     case "-start"://Now we can start the connection in the same time we invite another client (if need help type -help in the terminal)
@@ -96,6 +97,9 @@ public class Client {
                     case "-invites":
                         ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
                         handleMessages(aP);
+                        break;
+                    case "-pbk":
+                        PBKDF2.handlePBKDFParams(ans);
                         break;
                     default:
                         System.out.println("The command \"-" + ans[0] + "\" not found!\nTry Again or use \"-help\"");

@@ -1,9 +1,9 @@
 package pt.ubi.di.security.model;
 
 import java.io.Serializable;
-import java.util.Arrays;
-
 /**
+ * Class to store information about and individual puzzle (and the puzzle itself)
+ * Or to store the encrypted index to return to puzzles creator, also stores and encrypted hash of the index
  *  plaintext   |        |       XB                   |
  *  message     | secret | index | SHA1(secret|index) |
  *
