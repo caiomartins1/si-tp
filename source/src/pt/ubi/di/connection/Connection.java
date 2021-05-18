@@ -59,12 +59,12 @@ public class Connection extends Thread {
      */
     public void handleAction(String[] action) throws IOException {
         switch (action[0]) {
-            case "init" -> commandChangeConnectionName(action[1]);
-            case "help" -> commandHelp();
-            case "exit" -> commandExit();
-            case "list" -> commandListOfUsers();
-            case "connect" -> commandConnectToAnotherClient(action);
-            case "invites" -> outputStream.writeObject(invites);
+            case "-init" -> commandChangeConnectionName(action[1]);
+            case "-help" -> commandHelp();
+            case "-exit" -> commandExit();
+            case "-list" -> commandListOfUsers();
+            case "-connect" -> commandConnectToAnotherClient(action);
+            case "-invites" -> outputStream.writeObject(invites);
         }
     }
 
