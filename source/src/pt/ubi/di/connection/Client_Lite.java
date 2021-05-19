@@ -4,6 +4,7 @@ import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.MerklePuzzle;
 import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityMP;
+import pt.ubi.di.security.model.SecurityUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -38,19 +39,27 @@ public class Client_Lite {
                 String option =(String) inputStream.readObject();
                 switch (option) {
                     case "dh":
-                        System.out.println("_____________Starting Diffie Hellman key exchange_____________");
-                        SecurityDH a = (SecurityDH) inputStream.readObject();
-                        SecurityDH b = new SecurityDH(a.getG(),a.getP(),false);
-                        b.generateValues(false);
-                        outputStream.writeObject(b);
-                        b.generateKey(a.getX());
+                        SecurityDH.receiveExchange(outputStream,inputStream).toByteArray();
                         break;
                     case "mkp":
-                        System.out.println("_____________Starting Merkle Puzzles key exchange_____________");
-                        SecurityMP factoryMP = (SecurityMP) inputStream.readObject();
-                        SecurityMP resultMP = new SecurityMP(factoryMP.getPuzzles());
-                        resultMP.encryptIndex();
-                        outputStream.writeObject(resultMP.getFinalSolvedPuzzle());
+                        SecurityMP.receiveExchange(outputStream, inputStream);
+                        break;
+                    case "sk":
+                        //DH implementation
+                        /*byte[] cipherKey =  SecurityDH.receiveExchange(outputStream,inputStream).toByteArray();
+                        byte[] cipher = (byte[]) inputStream.readObject();
+                        byte[] sessionKey = SecurityUtil.decipherSecurity(cipher,cipherKey);
+                        System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));*/
+
+                        //MKP implementation
+                        System.out.println("Entrei Sk");
+                        byte[] cipherKey = SecurityMP.receiveExchange(outputStream, inputStream);
+                        byte[] cipher = (byte[]) inputStream.readObject();
+                        byte[] sessionKey = SecurityUtil.decipherSecurity(cipher, cipherKey);
+                        System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));
+
+
+
                         break;
                     default:
                         break;

@@ -2,7 +2,7 @@ package pt.ubi.di.connection;
 
 import pt.ubi.di.Model.ApplyClientConnection;
 import pt.ubi.di.Model.Validations;
-import pt.ubi.di.pbkdf.PBKDF2;
+import pt.ubi.di.security.model.PBKDF2;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;

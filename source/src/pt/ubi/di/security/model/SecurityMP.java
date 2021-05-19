@@ -1,9 +1,10 @@
 package pt.ubi.di.security.model;
 
-import java.io.Serializable;
+import java.io.*;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -24,8 +25,8 @@ public class SecurityMP implements Serializable {
     private final int secretSize; //size of the secret key to be exchanged
     private final int keySize; //size of the key to be used for encryption
     private final int bytesToGuess; //amount of bytes to be omitted from the encryption key
-    private static final int HASHSIZE=20; // size of the hash produced by SHA1
     private boolean flag; // flag to know if solution was found
+    private static final int HASHSIZE=20; // size of the hash produced by SHA1
 
     /**
      * A byte array of the chosen secret key:
@@ -205,7 +206,7 @@ public class SecurityMP implements Serializable {
         for(int i=0;i<key.length-bytesToGuess;i++)//TODO
             keyShorted[i]=key[i+bytesToGuess];
         byte[] message = createMessage(secretSize);
-        byte[] cipher = oneTimePadEncrypt(message,createNoise(key,message.length));
+        byte[] cipher = SecurityUtil.oneTimePadEncrypt(message,key,message.length);
         byte[] puzzle = new byte[cipher.length+keyShorted.length];
         System.arraycopy(cipher,0,puzzle,0,cipher.length);
         System.arraycopy(keyShorted,0,puzzle,cipher.length,keyShorted.length);
@@ -239,47 +240,6 @@ public class SecurityMP implements Serializable {
         System.out.println("hash: "+SecurityUtil.byteArrayToHex(digest)+" Size:"+digest.length);
         System.out.println("Index: "+SecurityUtil.byteToInt(index)+" Size:"+index.length);*/
         return message;
-    }
-
-    /**
-     * Create noise to encrypt message with
-     * Example: NOISE(40B): SHA1(key)(20B) | SHA1(SHA1(key))(20B)
-     * @param key byte[] - array of bytes to be used to generate noise
-     * @param sizeBytes int - size in bytes of the noise
-     * @return byte[]- noise in byte array
-     */
-    private byte[] createNoise(byte[] key, int sizeBytes) {
-        int index = 0;
-        int n = sizeBytes /HASHSIZE;
-        byte[] prevDigest = SecurityUtil.hash("SHA1",key);
-        byte[] noise = new byte[sizeBytes];
-        System.arraycopy(prevDigest,0,noise,index,(sizeBytes <HASHSIZE) ? noise.length : prevDigest.length);
-        index = prevDigest.length;
-        for(int i=1;i<n;i++) {
-            byte[] digest = SecurityUtil.hash("SHA1",prevDigest);
-            System.arraycopy(digest,0,noise,index,(index <HASHSIZE) ? noise.length : digest.length);
-            index += digest.length;
-            prevDigest = digest;
-        }
-        return noise;
-    }
-
-    /**TODO maybe put this function on UTILs file
-     * One time pad encryption by doing --> message XOR key
-     * @param message byte[] - message to encrypt/decipher
-     * @param noise byte[] - noise to encrypt/decipher with
-     * @return byte[] of encrypted/decrypted message
-     */
-    private static byte[] oneTimePadEncrypt(byte[] message, byte[] noise) {
-        if (message.length != noise.length) {
-            System.out.println("Error Key not same size as message");
-            return new byte[0];
-        }
-        byte[] cipherBytes = new byte[message.length];
-        for(int i=0;i<message.length;i++) {
-            cipherBytes[i] = (byte) (message[i] ^ noise[i]);
-        }
-        return cipherBytes;
     }
 
     /**
@@ -334,9 +294,7 @@ public class SecurityMP implements Serializable {
             //System.out.print(".");TODO
             partKey[dept]=(byte) i;//try to replicate key
 
-            byte[] noise = createNoise(partKey,puzzle.getSizeCipherMessage());//try to replicate noise
-
-            byte[] message = oneTimePadEncrypt(cipher,noise);//try to decipher the cipher
+            byte[] message = SecurityUtil.oneTimePadEncrypt(cipher,partKey,puzzle.getSizeCipherMessage());//try to decipher the cipher
 
             byte[] messageDigestExpected = new byte[HASHSIZE];//get the hash in the message
             System.arraycopy(message,message.length-HASHSIZE,messageDigestExpected,0,messageDigestExpected.length);
@@ -371,8 +329,8 @@ public class SecurityMP implements Serializable {
     public void encryptIndex() {
         System.out.println("encrypting Index...");
         byte[] indexOfSecretKeyByte = SecurityUtil.intToByte(indexOfSecretKey);
-        byte[] indexEncrypted = oneTimePadEncrypt(indexOfSecretKeyByte,createNoise(chosenSecretKey,indexOfSecretKeyByte.length));
-        byte[] indexHashEncrypted = oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),createNoise(chosenSecretKey,HASHSIZE));
+        byte[] indexEncrypted = SecurityUtil.oneTimePadEncrypt(indexOfSecretKeyByte,chosenSecretKey,indexOfSecretKeyByte.length);
+        byte[] indexHashEncrypted = SecurityUtil.oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),chosenSecretKey,HASHSIZE);
         //finalSolvedPuzzle.toStringSolved();
         finalSolvedPuzzle = new MerklePuzzle(indexEncrypted,indexHashEncrypted);
     }
@@ -384,8 +342,8 @@ public class SecurityMP implements Serializable {
     public MerklePuzzle encryptIndexRet() {
         System.out.println("encrypting Index...");
         byte[] indexOfSecretKeyByte = SecurityUtil.intToByte(indexOfSecretKey);
-        byte[] indexEncrypted = oneTimePadEncrypt(indexOfSecretKeyByte,createNoise(chosenSecretKey,indexOfSecretKeyByte.length));
-        byte[] indexHashEncrypted = oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),createNoise(chosenSecretKey,HASHSIZE));
+        byte[] indexEncrypted = SecurityUtil.oneTimePadEncrypt(indexOfSecretKeyByte,chosenSecretKey,indexOfSecretKeyByte.length);
+        byte[] indexHashEncrypted = SecurityUtil.oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),chosenSecretKey,HASHSIZE);
         finalSolvedPuzzle = new MerklePuzzle(indexEncrypted,indexHashEncrypted);
         return new MerklePuzzle(indexEncrypted,indexHashEncrypted);
     }
@@ -401,8 +359,8 @@ public class SecurityMP implements Serializable {
         byte[] indexEncryptedTemp = puzzle.getIndexEncrypted();
         byte[] indexHashEncryptedTemp = puzzle.getIndexHashEncrypted();
         for(byte[] k : secretKeys) {
-            byte[] index = oneTimePadEncrypt(indexEncryptedTemp,createNoise(k,indexEncryptedTemp.length));
-            byte[] indexHashExpected = oneTimePadEncrypt(indexHashEncryptedTemp,createNoise(k,HASHSIZE));
+            byte[] index = SecurityUtil.oneTimePadEncrypt(indexEncryptedTemp,k,indexEncryptedTemp.length);
+            byte[] indexHashExpected = SecurityUtil.oneTimePadEncrypt(indexHashEncryptedTemp,k,HASHSIZE);
             byte[] indexHash = SecurityUtil.hash("SHA1",index);
             if(SecurityUtil.checkHash(indexHash,indexHashExpected)) {
                 System.out.println("KEY(hex): "+SecurityUtil.byteArrayToHex(k));
@@ -411,6 +369,35 @@ public class SecurityMP implements Serializable {
                 return;
             }
         }
+    }
+
+    public static byte[] startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+        System.out.println("_____________Starting Merkle Puzzles key exchange_____________");
+        try {
+            SecurityMP factoryMP = new SecurityMP();
+            outputStream.writeObject(factoryMP);
+            MerklePuzzle puzzleIndex = (MerklePuzzle) inputStream.readObject();
+            factoryMP.solveIndex(puzzleIndex);
+            return factoryMP.getChosenSecretKey();
+        } catch (Exception e) {
+            System.out.println("Error on MP key exchange(start): "+e.getMessage());
+        }
+        return new byte[0];
+    }
+
+    public static byte[] receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+        System.out.println("_____________Starting Merkle Puzzles key exchange_____________");
+        try {
+            SecurityMP factoryMP = (SecurityMP) inputStream.readObject();
+            SecurityMP resultMP = new SecurityMP(factoryMP.getPuzzles());
+            resultMP.encryptIndex();
+            outputStream.writeObject(resultMP.getFinalSolvedPuzzle());
+
+            return resultMP.getChosenSecretKey();
+        } catch (Exception e) {
+            System.out.println("Error on MP key exchange(receive): "+e.getMessage());
+        }
+        return new byte[0];
     }
 
     /**

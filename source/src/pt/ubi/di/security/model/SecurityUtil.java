@@ -1,10 +1,11 @@
 package pt.ubi.di.security.model;
 
+import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -19,6 +20,7 @@ public class SecurityUtil {
     static SecureRandom secureRandomGenerator = new SecureRandom(); // uses SHA1PRNG
     static Random random = new Random();
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    private static final int HASHSIZE=20; // size of the hash produced by SHA1
 
     /**
      * Generates a prime number
@@ -85,7 +87,7 @@ public class SecurityUtil {
         for (int i=0;i<byteSize;i++) {
             byte[] tmp = new byte[1];
             secureRandomGenerator.nextBytes(tmp);
-            if ((int)tmp[0]<0) {//TODO dafuq does this do
+            if ((int)tmp[0]<0) {
                 tmp[0] += 128;
             }
             bytesArray[i]=tmp[0];
@@ -221,20 +223,21 @@ public class SecurityUtil {
     }
 
     /**
-     * Convert an array of bytes to hex String
-     * @param byteArr byte[] - array of bytes to be converted to a hex String
-     * @return String - String representation of hex value.
+     * @param byteArr byte array to be converted to a hex String
+     * @return String representation of hex value.
      * <p>
-     * source: https://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java#9855338
+     * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
      */
     public static String byteArrayToHex(byte[] byteArr) {
-        char[] hexChars = new char[byteArr.length * 2];
-        for (int j = 0; j < byteArr.length; j++) {
-            int v = byteArr[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        BigInteger value = new BigInteger(1, byteArr);
+        String hex = value.toString(16);
+
+        int paddingLength = (byteArr.length * 2) - hex.length();
+        if (paddingLength > 0) {
+            return String.format("%0" + paddingLength + "d", 0) + hex;
+        } else {
+            return hex;
         }
-        return new String(hexChars);
     }
 
     /**
@@ -243,6 +246,10 @@ public class SecurityUtil {
      * @return String - return the byte array equivalent in string format UTF8
      */
     public static String byteArrayToString(byte[] byteArray) {
+        return new String(byteArray,StandardCharsets.UTF_8);
+    }
+
+    public static String byteArrayToStringPKCS5(byte[] byteArray) {
         return new String(byteArray,StandardCharsets.UTF_8);
     }
 
@@ -314,5 +321,103 @@ public class SecurityUtil {
      */
     public static int byteToInt(byte[] number) {
         return new BigInteger(number).intValue();
+    }
+
+    //-------------------------------------------------------------------------------------------------------------------
+    private static final int BOCK_SIZE = 16;
+    /**
+     *
+     * @param message
+     * @param key
+     * @return
+     */
+    public static byte[] encryptSecurity(byte[] message,byte[] key) {
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivParameterSpec = generateIv();
+
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec);
+            byte[] cipherBytes = cipher.doFinal(message);
+            byte[] finalCipher = new byte[cipherBytes.length+ivParameterSpec.getIV().length];
+            System.arraycopy(ivParameterSpec.getIV(),0,finalCipher,0,ivParameterSpec.getIV().length);
+            System.arraycopy(cipherBytes,0,finalCipher,ivParameterSpec.getIV().length,cipherBytes.length);
+            System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
+            return finalCipher;
+        } catch (Exception e) {
+            System.out.println("Error encrypting message (AES): " + e.getMessage());
+        }
+        return new byte[0];
+    }
+
+    /**
+     *
+     */
+    public static byte[] decipherSecurity(byte[] finalCipher,byte[] key) {
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
+        IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
+            return cipher.doFinal(finalCipher,BOCK_SIZE,finalCipher.length - BOCK_SIZE);
+        } catch (Exception e) {
+            System.out.println("Error decrypting cipher (AES): " + e.getMessage());
+        }
+        return new byte[0];
+    }
+
+    /**
+     * Create noise to encrypt message with
+     * Example: NOISE(40B): SHA1(key)(20B) | SHA1(SHA1(key))(20B)
+     * @param key byte[] - array of bytes to be used to generate noise
+     * @param sizeBytes int - size in bytes of the noise
+     * @return byte[]- noise in byte array
+     */
+    private static byte[] createNoise(byte[] key, int sizeBytes) {
+        int index = 0;
+        int n = sizeBytes /HASHSIZE;
+        byte[] prevDigest = SecurityUtil.hash("SHA1",key);
+        byte[] noise = new byte[sizeBytes];
+        System.arraycopy(prevDigest,0,noise,index,(sizeBytes <HASHSIZE) ? noise.length : prevDigest.length);
+        index = prevDigest.length;
+        for(int i=1;i<n;i++) {
+            byte[] digest = SecurityUtil.hash("SHA1",prevDigest);
+            System.arraycopy(digest,0,noise,index,(index <HASHSIZE) ? noise.length : digest.length);
+            index += digest.length;
+            prevDigest = digest;
+        }
+        return noise;
+    }
+
+    /**
+     * One time pad encryption by doing --> message XOR key
+     * @param message byte[] - message to encrypt/decipher
+     * @param key byte[] - array of bytes to be used to generate noise
+     * @param sizeBytes int - size in bytes of the noise
+     * @return byte[] of encrypted/decrypted message
+     */
+    public static byte[] oneTimePadEncrypt(byte[] message, byte[] key, int sizeBytes) {
+        byte[] noise = createNoise(key,sizeBytes);
+        if (message.length != noise.length) {
+            System.out.println("Error Key not same size as message");
+            return new byte[0];
+        }
+        byte[] cipherBytes = new byte[message.length];
+        for(int i=0;i<message.length;i++) {
+            cipherBytes[i] = (byte) (message[i] ^ noise[i]);
+        }
+        return cipherBytes;
+    }
+
+    /**
+     * Function to initialize an byte array to be used as iv for AES encryption
+     * array size = 16Bytes
+     * @return IvParameterSpec - returns the iv in the required state
+     */
+    public static IvParameterSpec generateIv() {
+        byte[] iv = new byte[BOCK_SIZE];
+        secureRandomGenerator.nextBytes(iv);
+        return new IvParameterSpec(iv);
     }
 }

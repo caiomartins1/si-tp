@@ -1,5 +1,7 @@
 package pt.ubi.di.security.model;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.math.BigInteger;
 
@@ -68,7 +70,6 @@ public class SecurityDH implements Serializable {
      * @param Y
      */
     public void generateKey(BigInteger Y) {
-
         K=Y.modPow(x,p);
         System.out.println("K: " + K);
     }
@@ -83,5 +84,57 @@ public class SecurityDH implements Serializable {
 
     public BigInteger getP() {
         return p;
+    }
+
+    public BigInteger getK() {
+        return K;
+    }
+
+    /**
+     *
+     * @param outputStream
+     * @param inputStream
+     * @param options
+     * @return
+     */
+    public static BigInteger startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+        try {
+            System.out.println("_____________Starting Diffie Hellman key exchange_____________");
+            SecurityDH factoryDH;
+            if (options.length < 2)
+                factoryDH = new SecurityDH(128, false);
+            else
+                factoryDH = new SecurityDH(128, false);
+            outputStream.writeObject(factoryDH);
+            SecurityDH resultDH = (SecurityDH) inputStream.readObject();
+            factoryDH.generateKey(resultDH.getX());
+            return factoryDH.getK();
+        }
+        catch (Exception e) {
+            System.out.println("Error on DH key exchange: "+e.getMessage());
+        }
+        return BigInteger.ZERO;
+    }
+
+    /**
+     *
+     * @param outputStream
+     * @param inputStream
+     * @return
+     */
+    public static BigInteger receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+        try {
+            System.out.println("_____________Starting Diffie Hellman key exchange_____________");
+            SecurityDH a = (SecurityDH) inputStream.readObject();
+            SecurityDH b = new SecurityDH(a.getG(),a.getP(),false);
+            b.generateValues(false);
+            outputStream.writeObject(b);
+            b.generateKey(a.getX());
+            return b.getK();
+        }
+        catch (Exception e) {
+            System.out.println("Error on DH key exchange(receive): "+e.getMessage());
+        }
+        return BigInteger.ZERO;
     }
 }

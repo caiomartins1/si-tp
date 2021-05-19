@@ -6,10 +6,12 @@ import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.MerklePuzzle;
 import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityMP;
+import pt.ubi.di.security.model.SecurityUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -41,30 +43,34 @@ public class Server_Lite {
                     String[] options = Objects.requireNonNull(Validations.readString()).split(" ");
                     switch (options[0]) {
                         case "-dh":
-                            System.out.println("_____________Starting Diffie Hellman key exchange_____________");
-                            outputStream.writeObject("dh");//inform KAP to use
-                            SecurityDH factoryDH;
-                            if(options.length<2)
-                                factoryDH = new SecurityDH(1024,false);//TODO improve parameter (how it works)
-                            else
-                                factoryDH = new SecurityDH(Integer.parseInt(options[1]),false);
-                            outputStream.writeObject(factoryDH);
-                            SecurityDH resultDH = (SecurityDH) inputStream.readObject();
-                            factoryDH.generateKey(resultDH.getX());
+                            SecurityDH.startExchange(outputStream,inputStream,options);
                             break;
                         case "-mkp":
-                            System.out.println("_____________Starting Merkle Puzzles key exchange_____________");
                             outputStream.writeObject("mkp");//inform KAP to use
-                            SecurityMP factoryMP = new SecurityMP();
-                            outputStream.writeObject(factoryMP);
-                            MerklePuzzle puzzleIndex = (MerklePuzzle) inputStream.readObject();
-                            factoryMP.solveIndex(puzzleIndex);
+                            SecurityMP.startExchange(outputStream, inputStream);
+                            break;
+                        case "-sk"://-sk sizeOfKey -KAP(dh mkp or rsa)
+                            outputStream.writeObject("sk");
+                            //DH implementation
+                            /*
+                            byte[] sessionKey = SecurityUtil.generateNumber(Integer.parseInt(options[1]));
+                            byte[] cipherKey =  SecurityDH.startExchange(outputStream,inputStream,options).toByteArray();
+                            System.out.println("key:"+SecurityUtil.byteArrayToHex(cipherKey)+" SIZE: "+cipherKey.length);
+                            byte[] cipher = SecurityUtil.encryptSecurity(sessionKey,cipherKey);
+                            outputStream.writeObject(cipher);
+                            System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));*/
+
+                            byte[] sessionKey = SecurityUtil.generateNumber(Integer.parseInt(options[1]));
+                            byte[] cipherKey = SecurityMP.startExchange(outputStream, inputStream);
+                            byte[] cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+                            outputStream.writeObject(cipher);
+                            System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));
+
                             break;
                         case "-help":
                             System.out.println(
                                     "help?...no."//TODO
                             );
-                            break;
                         default:
                             System.out.println("The command \"" + options[0] + "\" not found!\nTry Again or use \"-help\"");
                             break;
