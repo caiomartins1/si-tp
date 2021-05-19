@@ -3,7 +3,6 @@ package pt.ubi.di.security.model;
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.sound.midi.Soundbank;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -11,17 +10,15 @@ import java.util.HashSet;
 import java.util.Random;
 
 /**
- * TODO need to maybe create a way to generate safe primes
- * secureRandomGenerator
- *  //byte[] bytes = new byte[20];
- *  //secureRandomGenerator.nextBytes(bytes);
+ * Class for utilities to be used along the program.
+ * Provides encryption methods, number generators and others ....
  */
 public class SecurityUtil {
 
     static SecureRandom secureRandomGenerator = new SecureRandom(); // uses SHA1PRNG
     static Random random = new Random();
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
     private static final int HASHSIZE=20; // size of the hash produced by SHA1
+    private static final int BOCK_SIZE = 16;
 
     /**
      * Generates a prime number
@@ -30,14 +27,14 @@ public class SecurityUtil {
      * @return BigInteger - (probably) prime number
      */
     public static BigInteger generatePrime(int bitLength, boolean verbose) {
-        BigInteger prime = BigInteger.probablePrime(bitLength,random/*TODO make sure its not fucking anything serious*/);
+        BigInteger prime = BigInteger.probablePrime(bitLength,secureRandomGenerator);
         if (verbose)
-            System.out.println("--->Random prime(" +bitLength+ "bits)(p): "+prime.toString());
+            System.out.println("Random prime(" +bitLength+ "bits)(p): "+prime.toString());
         return prime;
     }
 
     /**
-     * Generates a safe prime number<p> TODO:complete description
+     * Generates a safe prime number<p>
      * Harder to attack -> Takes longer to generate
      * @param bitLength int - amount of bits desired
      * @param verbose  boolean - print messages
@@ -71,10 +68,10 @@ public class SecurityUtil {
     public static BigInteger generateNumber(BigInteger maxValue, boolean verbose) {
         BigInteger number;
         do {
-            number = new BigInteger(maxValue.bitLength(), random/*TODO make sure its not fucking anything serious*/);
+            number = new BigInteger(maxValue.bitLength(), random);
         } while (number.compareTo(maxValue) >= 0);
         if (verbose)
-            System.out.println("--->Random number: "+number.toString());
+            System.out.println("Random number: "+number.toString());
         return number;
     }
 
@@ -105,16 +102,15 @@ public class SecurityUtil {
     public static boolean checkIfPrime(BigInteger value, boolean verbose) {
         if (value.isProbablePrime(5)) { //kinda useless
             if (verbose)
-                System.out.println("--->Value: " + value + "\n    is a prime.");
+                System.out.println("Value: " + value + "\n    is a prime.");
             return true;
         }
         if (verbose)
-            System.out.println("--->Value: " + value + "\n    is not a prime.");
+            System.out.println("Value: " + value + "\n    is not a prime.");
         return false;
     }
 
     /**
-     * TODO: check
      * Function to check if a given value is a safe prime or not - NOT AS SLOW<p>
      * provides 2 different methods
      * @param value BigInteger - value to test if it is a safe prime
@@ -131,23 +127,21 @@ public class SecurityUtil {
         }
         if (checkIfPrime(result,verbose)) {
             if (verbose)
-                System.out.println("--->Value: " + value + "\n    is a safe prime.");
+                System.out.println("Value: " + value + "\n    is a safe prime.");
             return true;
         }
         if (verbose)
-            System.out.println("--->Value: " + value + "\n    is not a safe prime.");
+            System.out.println("Value: " + value + "\n    is not a safe prime.");
         return false;
     }
 
     /**
      * Function to find prime factors of a prime number, used to find a generator, Alternative Version, LESS time consuming<p>
      * It finds one or two prime factors only!!!!
-     * TODO: Chance it might not work everytime?
      * @param storage HashSet<BigInteger> - hash storage
      * @param value BigInteger - prime to look for factors for
-     * @param verbose boolean - print messages
      */
-    private static void findPrimeFactors(HashSet<BigInteger> storage, BigInteger value, boolean verbose) {
+    private static void findPrimeFactors(HashSet<BigInteger> storage, BigInteger value) {
         boolean flag = false;
         int count = 0;
         int arbitraryNumber = 1;
@@ -160,13 +154,9 @@ public class SecurityUtil {
                 break;
             }
             if (i.isProbablePrime(5)) {//if value mod i == 0
-                if (verbose)
-                    System.out.println("--->Found prime factor Alt: " + i);
                 storage.add(i);
                 value = value.divide(i);
                 if (count>=arbitraryNumber) {
-                    if (verbose)
-                        System.out.println("--->Finishing finding prime factors.");
                     flag = true;
                     break;
                 }
@@ -186,9 +176,6 @@ public class SecurityUtil {
      *
      * PS: lets never do this again
      *
-     * TODO IMPORTANT!!!!!!!: maybe be able to optimize
-     * TODO Need to format function
-     *
      * @param p BigInteger - assume its prime
      * @param verbose boolean - print messages
      * @return BigInteger - generator
@@ -198,10 +185,10 @@ public class SecurityUtil {
         BigInteger phi = p.subtract(BigInteger.ONE);
         BigInteger result;
 
-        findPrimeFactors(storage,phi,verbose);
+        findPrimeFactors(storage,phi);
 
         if (verbose)
-            System.out.println("--->Finished finding prime factors.");
+            System.out.println("Finished finding prime factors.");
 
         for (BigInteger r = BigInteger.TWO;r.compareTo(phi)<=0;r=r.add(BigInteger.ONE)) {
             boolean flag = false;
@@ -214,12 +201,12 @@ public class SecurityUtil {
             }
             if (!flag) {
                 if (verbose)
-                    System.out.println("--->Smallest generator g found: "+r.toString());
+                    System.out.println("Smallest generator g found: "+r.toString());
                 return r;
             }
         }
         if (verbose)
-            System.out.println("--->Could not find a suitable generator :(");
+            System.out.println("Could not find a suitable generator :(");
         return BigInteger.ZERO;
     }
 
@@ -247,10 +234,6 @@ public class SecurityUtil {
      * @return String - return the byte array equivalent in string format UTF8
      */
     public static String byteArrayToString(byte[] byteArray) {
-        return new String(byteArray,StandardCharsets.UTF_8);
-    }
-
-    public static String byteArrayToStringPKCS5(byte[] byteArray) {
         return new String(byteArray,StandardCharsets.UTF_8);
     }
 
@@ -286,27 +269,6 @@ public class SecurityUtil {
     }
 
     /**
-     * Function to create a hash of a message<p>
-     * md = MessageDigest.getInstance(algo);<p>
-     * md.update(message);<p>
-     * md.digest();
-     * @param algo String - String of algorithm to use
-     * @param message String - String of message to digest
-     * @return byte[] - array of bytes of the message digest (hash)
-     */
-    public static byte[] Hash(String algo,String message) {
-        MessageDigest md = null;
-        try {
-            md = MessageDigest.getInstance(algo);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        assert md != null;
-        md.update(message.getBytes());
-        return md.digest();
-    }
-
-    /**
      * Convert an int number to its byte[] representation
      * @param number int - number to convert
      * @return byte[] - array byte representation of the int number
@@ -325,17 +287,23 @@ public class SecurityUtil {
     }
 
     //-------------------------------------------------------------------------------------------------------------------
-    private static final int BOCK_SIZE = 16;
+    //-----------------------------------------------Encryption Functions-----------------------------------------------
+
     /**
-     *
-     * @param message
-     * @param key
-     * @return
+     * Function to encrypt a message.
+     * Uses AES-CBC
+     * iv is a 16 byte array that is appended at the start of the cipher
+     * @param message byte[] - message desired to encrypt
+     * @param key byte[] - byte array key
+     * @return byte[] -  encrypted message, return empty array if unable to cipher
      */
     public static byte[] encryptSecurity(byte[] message,byte[] key) {
+        if(!(key.length ==16 || key.length ==24 || key.length ==32)){
+            System.out.println("(ENCRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
+            return new  byte[0];
+        }
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec ivParameterSpec = generateIv();
-
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec);
@@ -343,8 +311,6 @@ public class SecurityUtil {
             byte[] finalCipher = new byte[cipherBytes.length+ivParameterSpec.getIV().length];
             System.arraycopy(ivParameterSpec.getIV(),0,finalCipher,0,ivParameterSpec.getIV().length);
             System.arraycopy(cipherBytes,0,finalCipher,ivParameterSpec.getIV().length,cipherBytes.length);
-            System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
-            System.out.println("IV: "+SecurityUtil.byteArrayToHex(ivParameterSpec.getIV()));
             return finalCipher;
         } catch (Exception e) {
             System.out.println("Error encrypting message (AES): " + e.getMessage());
@@ -353,20 +319,26 @@ public class SecurityUtil {
     }
 
     /**
-     *
+     * Function to decipher a cipher.
+     * Uses AES-CBC to decipher
+     * iv is a 16 byte array that is kept at the start of the cipher
+     * @param finalCipher byte[] - cipher in byte array format
+     * @param key byte[] - byte array key
+     * @return byte[] -  decrypted cipher, return empty array if unable to decipher
      */
     public static byte[] decipherSecurity(byte[] finalCipher,byte[] key) {
+        if(!(key.length ==16 || key.length ==24 || key.length ==32)){
+            System.out.println("(DECRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
+            return new  byte[0];
+        }
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
-        System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
-        System.out.println("IV: "+SecurityUtil.byteArrayToHex(ivParameterSpec.getIV()));
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
             return cipher.doFinal(finalCipher,BOCK_SIZE,finalCipher.length - BOCK_SIZE);
         } catch (Exception e) {
             System.out.println("Error decrypting cipher (AES): " + e.getMessage());
-            e.printStackTrace();
         }
         return new byte[0];
     }
@@ -404,7 +376,7 @@ public class SecurityUtil {
     public static byte[] oneTimePadEncrypt(byte[] message, byte[] key, int sizeBytes) {
         byte[] noise = createNoise(key,sizeBytes);
         if (message.length != noise.length) {
-            System.out.println("Error Key not same size as message");
+            System.out.println("OneTimePadEncrypt -> Error Key not same size as message");
             return new byte[0];
         }
         byte[] cipherBytes = new byte[message.length];
@@ -436,4 +408,13 @@ public class SecurityUtil {
         secureRandomGenerator.nextBytes(iv);
         return new IvParameterSpec(iv);
     }
+
+    public static int lookOptions(String[] options,String word) {
+        for(int i=0;i<options.length;i++) {
+            if(options[i].equals(word))
+                return i;
+        }
+        return -1;
+    }
+    
 }

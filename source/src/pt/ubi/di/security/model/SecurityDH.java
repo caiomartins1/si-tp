@@ -2,139 +2,143 @@ package pt.ubi.di.security.model;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.math.BigInteger;
 
-public class SecurityDH implements Serializable {
+public class SecurityDH{
 
-    //TODO setup public/private variables
-    //TODO improve DH organization
-    private BigInteger X;
     private BigInteger x;
-    private BigInteger g;
-    private BigInteger p;
+    private final BigInteger g;
+    private final BigInteger p;
     private BigInteger K;
+    private DiffieHellman storeValue;
 
     /**
-     *
-     * @param g
-     * @param p
-     * @param verbose
+     * <p>Constructor to participate in a Diffie-Hellman key exchange
+     * Uses already created <i>g</i> and <i>p</i> values
+     * then generates a <i>X</i> value by choosing a random <i>x</i> such that 0 < x < p</p>
+     * @param g BigInteger - g value
+     * @param p BigInteger -p value
+     * @param verbose boolean - allow verbose
      */
     public SecurityDH(BigInteger g, BigInteger p,boolean verbose) {
         this.g = g;
         this.p = p;
         generateValues(verbose);
     }
-    public SecurityDH(int bitLength,boolean verbose) {
-        p = SecurityUtil.generatePrime(bitLength,verbose);
+
+    /**
+     * <p>Constructor to start a Diffie-Hellman key exchange
+     * Creates a prime number <i>p</i> and a generator <i>g</i>, and
+     * then generates a <i>X</i> value by choosing a random <i>x</i> such that 0 < x < p</p>
+     * @param bitLength int - amount of bit for the prime number
+     * @param verbose boolean - allow verbose
+     */
+    public SecurityDH(int bitLength,boolean safe,boolean verbose) {
+        if(safe)
+            p = SecurityUtil.generateSafePrime(bitLength,verbose);
+        else
+            p = SecurityUtil.generatePrime(bitLength,verbose);
         g = SecurityUtil.findGenerator(p,verbose);
         generateValues(verbose);
     }
 
     /**
-     *
-     * @param verbose
+     * Method to generate an <i>X</i> value by choosing a random <i>x</i> such as
+     * 0 < x < p
+     * @param verbose boolean - allow verbose
      */
-    public void generateValues(boolean verbose) {
+    private void generateValues(boolean verbose) {
         x = SecurityUtil.generateNumber(p,verbose);
-        X = g.modPow(x,p);
-
-        if (verbose)
-            System.out.println("X = g^x mod p <->" + X + " = " + g + "^" + x + " mod " + p);
+        BigInteger X = g.modPow(x,p);
+        if (verbose) {
+            System.out.println(">Values:");
+            System.out.println("X = g^x mod p");
+            System.out.println("X:" + X);
+            System.out.println("x:" + x);
+        }
+        storeValue = new DiffieHellman(p,g,X);
     }
 
     /**
-     *
-     * @param bitLength
-     * @param x
-     * @param verbose
-     */
-    public void generateValues(int bitLength, BigInteger x, boolean verbose) {
-        p = SecurityUtil.generatePrime(bitLength,verbose);
-        g = SecurityUtil.findGenerator(p,verbose);
-
-        if( x.compareTo(BigInteger.ZERO) != 0 || x.compareTo(p) >= 0)
-            this.x = x;
-        else
-            this.x = SecurityUtil.generateNumber(p,verbose);
-
-        X = g.modPow(x,p);
-
-        if (verbose)
-            System.out.println("X = g^x mod p <->" + X + " = " + g + "^" + x + " mod " + p);
-    }
-
-    /**
-     *
-     * @param Y
+     * Generates a k value to be used as a key, uses a given value Y (the X from the participant's operation)
+     * Y = Y^x mod p
+     * @param Y BigInteger
      */
     public void generateKey(BigInteger Y) {
         K=Y.modPow(x,p);
-        System.out.println("K: " + K);
     }
 
-    public BigInteger getX() {
-        return X;
+    public DiffieHellman getStoreValue() {
+        return storeValue;
     }
 
-    public BigInteger getG() {
-        return g;
-    }
-
-    public BigInteger getP() {
-        return p;
-    }
-
-    public BigInteger getK() {
-        return K;
+    public byte[] getKBytes() {
+        return K.toByteArray();
     }
 
     /**
-     *
-     * @param outputStream
-     * @param inputStream
-     * @param options
-     * @return
+     * Method to start a key exchange with whoever is connected, allows different options
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param options String[] - string array of options for more custom interaction
+     * @return byte[] - returns the key in byte array format
      */
-    public static BigInteger startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+    public static byte[] startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
         try {
-            System.out.println("_____________Starting Diffie Hellman key exchange_____________");
-            SecurityDH factoryDH;
-            if (options.length < 2)
-                factoryDH = new SecurityDH(128, false);
-            else
-                factoryDH = new SecurityDH(128, false);
-            outputStream.writeObject(factoryDH);
-            SecurityDH resultDH = (SecurityDH) inputStream.readObject();
+            System.out.println(">Starting Diffie Hellman key exchange");
+            int lengthBit = 1024;
+            boolean verbose = false;
+            boolean safe = false;
+            int index = SecurityUtil.lookOptions(options,"-l");
+            if (index!=-1)
+                lengthBit = Integer.parseInt(options[index+1]);
+            index = SecurityUtil.lookOptions(options,"-v");
+            if(index!=-1)
+                verbose = true;
+            index = SecurityUtil.lookOptions(options,"-s");
+            if(index!=-1)
+                safe = true;
+            SecurityDH factoryDH = new SecurityDH(lengthBit,safe,verbose);
+            outputStream.writeObject(factoryDH.getStoreValue());
+            DiffieHellman resultDH = (DiffieHellman) inputStream.readObject();
             factoryDH.generateKey(resultDH.getX());
-            return factoryDH.getK();
+            return factoryDH.getKBytes();
         }
         catch (Exception e) {
-            System.out.println("Error on DH key exchange: "+e.getMessage());
+            System.out.println("Error on DH key exchange(start): "+e.getMessage());
         }
-        return BigInteger.ZERO;
+        return new byte[0];
     }
 
     /**
-     *
-     * @param outputStream
-     * @param inputStream
-     * @return
+     * Method to accept and participate on a key exchange with whoever is connected
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
      */
-    public static BigInteger receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+    public static byte[] receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
         try {
-            System.out.println("_____________Starting Diffie Hellman key exchange_____________");
-            SecurityDH a = (SecurityDH) inputStream.readObject();
-            SecurityDH b = new SecurityDH(a.getG(),a.getP(),false);
-            b.generateValues(false);
-            outputStream.writeObject(b);
-            b.generateKey(a.getX());
-            return b.getK();
+            System.out.println(">Starting Diffie Hellman key exchange");
+            DiffieHellman generatedValues = (DiffieHellman) inputStream.readObject();
+            SecurityDH resultDH = new SecurityDH(generatedValues.getG(),generatedValues.getP(),false);
+            resultDH.generateValues(false);
+            outputStream.writeObject(resultDH.getStoreValue());
+            resultDH.generateKey(generatedValues.getX());
+            return resultDH.getKBytes();
         }
         catch (Exception e) {
             System.out.println("Error on DH key exchange(receive): "+e.getMessage());
         }
-        return BigInteger.ZERO;
+        return new byte[0];
+    }
+
+    public static void help() {
+        System.out.println(
+                "Diffie-Hellman KAP Commands =============================\n" +
+                        "-l \033[3mlengthBit\033[0m, length of the prime, default 1024\n" +
+                        "-s, generates Sophie Germain Primes (safe primes), takes much longer" +
+                        "-v, verbose\n" +
+                        "================================================\n"
+        );
     }
 }

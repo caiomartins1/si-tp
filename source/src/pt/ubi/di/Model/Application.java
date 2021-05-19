@@ -14,7 +14,7 @@ public class Application {
         String name = "Vinícius";
         Client c = new Client(ip, port, name);*/
 
-        SecurityMP a = new SecurityMP(1,16);
+        /*SecurityMP a = new SecurityMP(1,16);*/
 
         /*SecurityDH a = new SecurityDH(255,false);
         SecurityDH b = new SecurityDH(a.getG(),a.getP(),false);
@@ -24,8 +24,5 @@ public class Application {
         b.generateKey(a.getX());
         System.out.println("KEY: "+ SecurityUtil.byteArrayToHex(a.getK().toByteArray()) +" SIZE: " + a.getK().toByteArray().length);
         System.out.println("KEY: "+ SecurityUtil.byteArrayToHex(b.getK().toByteArray())+" SIZE: " + b.getK().toByteArray().length);*/
-
-
-
     }
 }
