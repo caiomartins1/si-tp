@@ -52,6 +52,20 @@ public class Client_Lite {
                         resultMP.encryptIndex();
                         outputStream.writeObject(resultMP.getFinalSolvedPuzzle());
                         break;
+                    case "rsa":
+                        System.out.println("_____________Starting RSA key exchange_____________");
+
+                        //gera as chaves RSA do Cliente
+                        SecurityRSA factoryRSA = new SecurityRSA(1024,false);
+                        factoryRSA.calculate_Keys();
+
+                        //envia a pk para o outro cliente
+                        outputStream.writeObject(factoryRSA.getE());
+                        outputStream.writeObject(factoryRSA.getN());
+
+                        //recebe a pk outro Cliente
+                        SecurityRSA factoryRSA_1 = new SecurityRSA((BigInteger) inputStream.readObject(), (BigInteger)  inputStream.readObject());
+                        break;
                     default:
                         break;
                 }

@@ -60,6 +60,23 @@ public class Server_Lite {
                             MerklePuzzle puzzleIndex = (MerklePuzzle) inputStream.readObject();
                             factoryMP.solveIndex(puzzleIndex);
                             break;
+                        case "-rsa":
+                            System.out.println("_____________Starting RSA key exchange_____________");
+                            outputStream.writeObject("rsa");
+
+                            //pk do outro Cliente
+                            SecurityRSA factoryRSA_1;
+                            factoryRSA_1 = new SecurityRSA((BigInteger)inputStream.readObject(), (BigInteger) inputStream.readObject());
+
+                            //gera as suas chaves de modo a poder enviar mensagens encriptadas
+                            SecurityRSA factoryRSA = new SecurityRSA(1024,false);
+                            factoryRSA.calculate_Keys();
+
+                            //envio da chave pública do Cliente
+                            outputStream.writeObject(factoryRSA.getE());
+                            outputStream.writeObject(factoryRSA.getN());
+
+                            break;
                         case "-help":
                             System.out.println(
                                     "help?...no."//TODO
