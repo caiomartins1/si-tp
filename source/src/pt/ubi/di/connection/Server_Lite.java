@@ -63,7 +63,10 @@ public class Server_Lite {
                             byte[] sessionKey = SecurityUtil.generateNumber(Integer.parseInt(options[1]));
                             byte[] cipherKey = SecurityMP.startExchange(outputStream, inputStream);
                             byte[] cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+                            byte[] hmac = SecurityUtil.hmac(sessionKey);
+
                             outputStream.writeObject(cipher);
+                            outputStream.writeObject(hmac);
                             System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));
 
                             break;

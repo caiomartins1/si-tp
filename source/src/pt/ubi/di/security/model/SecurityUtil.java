@@ -3,6 +3,7 @@ package pt.ubi.di.security.model;
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.sound.midi.Soundbank;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -343,6 +344,7 @@ public class SecurityUtil {
             System.arraycopy(ivParameterSpec.getIV(),0,finalCipher,0,ivParameterSpec.getIV().length);
             System.arraycopy(cipherBytes,0,finalCipher,ivParameterSpec.getIV().length,cipherBytes.length);
             System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
+            System.out.println("IV: "+SecurityUtil.byteArrayToHex(ivParameterSpec.getIV()));
             return finalCipher;
         } catch (Exception e) {
             System.out.println("Error encrypting message (AES): " + e.getMessage());
@@ -355,14 +357,16 @@ public class SecurityUtil {
      */
     public static byte[] decipherSecurity(byte[] finalCipher,byte[] key) {
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
-        System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
         IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
+        System.out.println("AES C: "+SecurityUtil.byteArrayToHex(finalCipher));
+        System.out.println("IV: "+SecurityUtil.byteArrayToHex(ivParameterSpec.getIV()));
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
             return cipher.doFinal(finalCipher,BOCK_SIZE,finalCipher.length - BOCK_SIZE);
         } catch (Exception e) {
             System.out.println("Error decrypting cipher (AES): " + e.getMessage());
+            e.printStackTrace();
         }
         return new byte[0];
     }
@@ -408,6 +412,18 @@ public class SecurityUtil {
             cipherBytes[i] = (byte) (message[i] ^ noise[i]);
         }
         return cipherBytes;
+    }
+
+
+    public static byte[] hmac(byte[] key) {
+        byte[] msd = hash("SHA256", key);
+        return  encryptSecurity(msd, key);
+    }
+
+    public static boolean hmacCheck(byte[] hmac, byte[] key) {
+        byte[] msg = decipherSecurity(hmac, key);
+        byte[] msd = hash("SHA256", key);
+        return checkHash(msg, msd);
     }
 
     /**

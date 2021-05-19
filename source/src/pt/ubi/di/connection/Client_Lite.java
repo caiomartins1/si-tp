@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class Client_Lite {
@@ -55,8 +56,20 @@ public class Client_Lite {
                         System.out.println("Entrei Sk");
                         byte[] cipherKey = SecurityMP.receiveExchange(outputStream, inputStream);
                         byte[] cipher = (byte[]) inputStream.readObject();
+                        System.out.println("cipherO: "+Arrays.toString(cipher) + " SIZE: " + cipher.length);
+                        System.out.println("cipherS: "+SecurityUtil.byteArrayToString(cipher));
+                        cipher[1] =(byte) 0;
+                        System.out.println("cipherA: "+ Arrays.toString(cipher) + " SIZE: " + cipher.length);
+                        System.out.println("cipherS: "+SecurityUtil.byteArrayToString(cipher));
+                        byte[] hmac = (byte[]) inputStream.readObject();
                         byte[] sessionKey = SecurityUtil.decipherSecurity(cipher, cipherKey);
-                        System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));
+                        System.out.println("cipher4: "+SecurityUtil.byteArrayToHex(sessionKey) + " SIZE: " + sessionKey.length);
+                        System.out.println("cipherS: "+SecurityUtil.byteArrayToString(sessionKey));
+                        if (!SecurityUtil.hmacCheck(hmac, sessionKey)) {
+                            System.out.println("UIUI");
+                        } else {
+                            System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));
+                        }
 
 
 

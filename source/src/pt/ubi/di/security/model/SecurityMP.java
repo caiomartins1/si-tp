@@ -144,7 +144,7 @@ public class SecurityMP implements Serializable {
      * <p>N=100 secret=32 key=16 bytesMissing=3</p>
      */
     public SecurityMP() {
-        this(10000,32,16,3,false);
+        this(10000,32,16,2,false);
     }
 
     /**
