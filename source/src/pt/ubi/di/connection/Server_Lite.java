@@ -4,11 +4,13 @@ package pt.ubi.di.connection;
 import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityMP;
+import pt.ubi.di.security.model.SecurityRSA;
 import pt.ubi.di.security.model.SecurityUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Objects;
@@ -88,7 +90,7 @@ public class Server_Lite {
 
                             //pk do outro Cliente
                             SecurityRSA factoryRSA_1;
-                            factoryRSA_1 = new SecurityRSA((BigInteger)inputStream.readObject(), (BigInteger) inputStream.readObject());
+                            factoryRSA_1 = new SecurityRSA((BigInteger) inputStream.readObject(), (BigInteger) inputStream.readObject());
 
                             //gera as suas chaves de modo a poder enviar mensagens encriptadas
                             SecurityRSA factoryRSA = new SecurityRSA(1024,false);

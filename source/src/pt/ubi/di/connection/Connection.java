@@ -127,6 +127,7 @@ public class Connection extends Thread {
                         -list -> list of all users connected in the serve
                         -init -> change the name of the connection
                         -help -> show all the commands available
+                        -pbk  -> generates a derived key from a password given, using oPassword Based Key Derivation Function 2 (PBKDF2)
                         -exit -> close the connection with the server
                         -invites -> show the invites received from the serve or another clients may use sessionKey 
                         -connect

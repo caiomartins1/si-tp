@@ -1,14 +1,12 @@
 package pt.ubi.di.connection;
 
 import pt.ubi.di.Model.Validations;
-import pt.ubi.di.security.model.MerklePuzzle;
-import pt.ubi.di.security.model.SecurityDH;
-import pt.ubi.di.security.model.SecurityMP;
-import pt.ubi.di.security.model.SecurityUtil;
+import pt.ubi.di.security.model.*;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Objects;
