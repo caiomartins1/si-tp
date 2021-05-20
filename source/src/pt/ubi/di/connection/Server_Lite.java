@@ -89,6 +89,7 @@ public class Server_Lite {
                             if(index!=-1)
                                 SecurityRSA.help();
                             else {
+                                //demora um pouco
                                 System.out.println("_____________Starting RSA key exchange_____________");
                                 outputStream.writeObject("rsa");
 
@@ -98,10 +99,14 @@ public class Server_Lite {
                                 //gera as suas chaves de modo a poder enviar mensagens encriptadas
                                 SecurityRSA factoryRSA = new SecurityRSA();
                                 factoryRSA.calculate_Keys();
+                                System.out.println("My Public Key: "+ factoryRSA.getE() + "\nMy Private Key: " + factoryRSA.getD());
 
-                                //escreve e envia chave pública do Cliente - usa para encriptar mensagens a enviar
+                                //escreve e envia a sua chave pública do Cliente - usa para encriptar mensagens a enviar
                                 SecurityRSA publicKey = new SecurityRSA(factoryRSA.getE(),factoryRSA.getN());
                                 outputStream.writeObject(publicKey);
+
+                                System.out.println("-------------------------------------------");
+                                System.out.println("Public Key do outro User -> " + factoryRSA_1.getE());
                             }
                             break;
                         case "-help":
