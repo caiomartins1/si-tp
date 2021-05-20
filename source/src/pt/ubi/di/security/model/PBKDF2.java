@@ -49,7 +49,7 @@ public class PBKDF2 {
      *             - Key Length (512 bits)
      */
     public static void handlePBKDFParams(String[] args) {
-        String algo = "sha1";
+        String algo = "sha512";
         String pass = "";
         int iter = 1000;
         int keyLength = 512;
@@ -60,24 +60,24 @@ public class PBKDF2 {
                     PBKDF2 (Password-Based Key Derivation Function 2) is a key derivation function, 
                     used to reduce vulnerabilities of brute-force attacks.
                     
-                    PBKDF2 Commands ==========================================================
+                    PBKDF2 Commands =====================================================================================================
                     -h -help --help, displays the help menu.
-                    -p -password --password, password from which a derived key is generated.
-                    -a -algo --algo, algorithm used to generate the derived key.
-                    -i -iter --iter, number of iterations desired.
-                    -l -length --length, bit-length of the derived key.
-                    ===========================================================================
+                    -p -password --password, password from which a derived key is generated. (mandatory)
+                    -a -algo --algo, algorithm used to generate the derived key. {SHA1, SHA224, SHA256, SHA384, SHA512} (Default: SHA512)
+                    -i -iter --iter, number of iterations desired. (Default: 1000)
+                    -l -length --length, bit-length of the derived key. (Default: 512 bits)
+                    =====================================================================================================================
                     """);
             return;
         }
 
         int algoIndex = SecurityUtil.lookOptions(args, new String[]{"-a", "-algo", "--algo"});
-        if (algoIndex != -1) {
+        if (algoIndex != -1 && (algoIndex + 1) <= args.length - 1){
             algo = args[algoIndex + 1];
         }
 
         int passwordIndex = SecurityUtil.lookOptions(args, new String[]{"-p", "-password", "--password"});
-        if (passwordIndex != -1) {
+        if (passwordIndex != -1 && (passwordIndex + 1) <= (args.length - 1)) {
             pass = args[passwordIndex + 1];
         } else {
             System.out.println("Must provide a password, check -help for more details");
@@ -85,7 +85,7 @@ public class PBKDF2 {
         }
 
         int iterIndex = SecurityUtil.lookOptions(args, new String[]{"-i", "-iter", "--iter"});
-        if (iterIndex != -1) {
+        if (iterIndex != -1 && (iterIndex + 1) <= args.length - 1) {
             try {
                 iter = Integer.parseInt(args[iterIndex + 1]);
             } catch (Exception e) {
@@ -94,7 +94,7 @@ public class PBKDF2 {
         }
 
         int lengthIndex = SecurityUtil.lookOptions(args, new String[]{"-l", "-length", "--length"});
-        if (lengthIndex != -1) {
+        if (lengthIndex != -1 && (lengthIndex + 1) <= args.length - 1) {
             try {
                 keyLength = Integer.parseInt(args[lengthIndex + 1]);
             } catch (Exception e) {
