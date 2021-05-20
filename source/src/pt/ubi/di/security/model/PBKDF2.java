@@ -56,7 +56,18 @@ public class PBKDF2 {
 
         int helpIndex = SecurityUtil.lookOptions(args, new String[]{"-help", "-h", "--help"});
         if (helpIndex != -1) {
-            System.out.println("Help menu");
+            System.out.println("""
+                    PBKDF2 (Password-Based Key Derivation Function 2) is a key derivation function, 
+                    used to reduce vulnerabilities of brute-force attacks.
+                    
+                    PBKDF2 Commands ==========================================================
+                    -h -help --help, displays the help menu.
+                    -p -password --password, password from which a derived key is generated.
+                    -a -algo --algo, algorithm used to generate the derived key.
+                    -i -iter --iter, number of iterations desired.
+                    -l -length --length, bit-length of the derived key.
+                    ===========================================================================
+                    """);
             return;
         }
 
