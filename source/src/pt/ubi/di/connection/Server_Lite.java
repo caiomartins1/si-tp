@@ -1,12 +1,11 @@
 package pt.ubi.di.connection;
 
-
 import pt.ubi.di.Model.ApplyClientConnection;
 import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.MerklePuzzle;
 import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityMP;
-
+import pt.ubi.di.security.model.SecurityRSA;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -14,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.math.BigInteger;
 
 
 public class Server_Lite {
@@ -65,16 +65,15 @@ public class Server_Lite {
                             outputStream.writeObject("rsa");
 
                             //pk do outro Cliente
-                            SecurityRSA factoryRSA_1;
-                            factoryRSA_1 = new SecurityRSA((BigInteger)inputStream.readObject(), (BigInteger) inputStream.readObject());
-
+                            SecurityRSA factoryRSA_1= (SecurityRSA)inputStream.readObject();
+                            System.out.println("1-"+(BigInteger)factoryRSA_1.getE()+"\n"+"2-"+(BigInteger)factoryRSA_1.getN());
                             //gera as suas chaves de modo a poder enviar mensagens encriptadas
                             SecurityRSA factoryRSA = new SecurityRSA(1024,false);
                             factoryRSA.calculate_Keys();
 
+                            SecurityRSA publickey = new SecurityRSA(factoryRSA.getE(),factoryRSA.getN());
                             //envio da chave pública do Cliente
-                            outputStream.writeObject(factoryRSA.getE());
-                            outputStream.writeObject(factoryRSA.getN());
+                            outputStream.writeObject(publickey);
 
                             break;
                         case "-help":

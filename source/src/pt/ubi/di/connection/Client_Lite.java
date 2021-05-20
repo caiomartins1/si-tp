@@ -4,12 +4,13 @@ import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.MerklePuzzle;
 import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityMP;
-
+import pt.ubi.di.security.model.SecurityRSA;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.Objects;
+import java.math.BigInteger;
+import java.util.*;
 
 public class Client_Lite {
     private final String ip;
@@ -60,11 +61,12 @@ public class Client_Lite {
                         factoryRSA.calculate_Keys();
 
                         //envia a pk para o outro cliente
-                        outputStream.writeObject(factoryRSA.getE());
-                        outputStream.writeObject(factoryRSA.getN());
+                        SecurityRSA publickey = new SecurityRSA(factoryRSA.getE(),factoryRSA.getN());
+                        outputStream.writeObject(publickey);
 
                         //recebe a pk outro Cliente
-                        SecurityRSA factoryRSA_1 = new SecurityRSA((BigInteger) inputStream.readObject(), (BigInteger)  inputStream.readObject());
+                        SecurityRSA factoryRSA_1 = (SecurityRSA) inputStream.readObject();
+                        System.out.println(factoryRSA_1.getE() +"\n 2- "+ factoryRSA_1.getN());
                         break;
                     default:
                         break;

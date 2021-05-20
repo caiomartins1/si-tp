@@ -1,15 +1,16 @@
 package pt.ubi.di.security.model;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
-public class SecurityRSA {
+public class SecurityRSA implements Serializable {
     private BigInteger d, p, q, M;
     BigInteger N, e;
 
     //definir a pk do outro
-    public SecurityRSA(BigInteger p, BigInteger N) {
-        this.p = p;
+    public SecurityRSA(BigInteger e, BigInteger N) {
+        this.e = e;
         this.N = N;
     }
     
@@ -64,19 +65,19 @@ public class SecurityRSA {
     }
 
     public BigInteger encript_hashMessage(String plain_message, BigInteger pk, BigInteger n){
-        //byte[] convert = plain_message.getBytes();
+        byte[] convert = plain_message.getBytes();
         //determinar o hash da mensagem decifrada
         String hash = "SHA-256";
-        byte[] hmsg = SecurityUtil.hash(hash,plaintext);
-        BigInteger encripted_msg = (new BigInteger(hmsg)).modPow(pk,n);
+        byte[] hmsg = SecurityUtil.hash(hash,convert);
+        BigInteger encripted_hash_msg = (new BigInteger(hmsg)).modPow(pk,n);
         //String encripted_msg = (new BigInteger(plain_message)).modPow(pk,n).toString();
         //devolve o BigInteger da mensagem encriptada com a chave publica
-        return encripted_msg;
+        return encripted_hash_msg;
     }
 
     //decifração do criptograma com a chave privada do cliente (client one)
-    public String decript_Message(BigInteger ciphertext, BigInteger sk, BigInteger n){
-        byte[] decrpt = ciphertext.modPow(sk,n).toByteArray();
+    public String decript_Message(BigInteger ciphertext){
+        byte[] decrpt = ciphertext.modPow(d,N).toByteArray();
         String decrpt_msg = new String(decrpt);
         //return String - devolve uma String 
         return decrpt_msg;
@@ -85,11 +86,11 @@ public class SecurityRSA {
     //verificação da integridade de uma mensagem
     public void verify_Integrity(BigInteger ciphertext, BigInteger sk, BigInteger n, String hash, BigInteger hashtext){
         //decifrar a mensagem e converter para bytes
-        byte[] msg = decript_Message(ciphertext, sk, n).getBytes();
+        byte[] msg = decript_Message(ciphertext).getBytes();
         //determinar o hash da mensagem decifrada
         byte[] h = SecurityUtil.hash(hash,msg);
         //decifrar o hash da mensagem cifrada 
-        byte[] hash_msg = decript_Message(hashtext,sk,n).getBytes();
+        byte[] hash_msg = decript_Message(hashtext).getBytes();
         //verificar se é igual ou não
         if(SecurityUtil.checkHash(h, hash_msg)){
             System.out.println("Is Equal");
