@@ -89,13 +89,13 @@ public class SecurityDH{
             int lengthBit = 1024;
             boolean verbose = false;
             boolean safe = false;
-            int index = SecurityUtil.lookOptions(options,"-l");
+            int index = SecurityUtil.lookOptions(options, new String[]{"-l","-length","--length"});
             if (index!=-1)
                 lengthBit = Integer.parseInt(options[index+1]);
-            index = SecurityUtil.lookOptions(options,"-v");
+            index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
             if(index!=-1)
                 verbose = true;
-            index = SecurityUtil.lookOptions(options,"-s");
+            index = SecurityUtil.lookOptions(options,new String[]{"-s","-safe","--safe"});
             if(index!=-1)
                 safe = true;
             SecurityDH factoryDH = new SecurityDH(lengthBit,safe,verbose);
@@ -134,11 +134,13 @@ public class SecurityDH{
 
     public static void help() {
         System.out.println(
-                "Diffie-Hellman KAP Commands =============================\n" +
-                        "-l \033[3mlengthBit\033[0m, length of the prime, default 1024\n" +
-                        "-s, generates Sophie Germain Primes (safe primes), takes much longer" +
-                        "-v, verbose\n" +
-                        "================================================\n"
+                """
+                        Diffie-Hellman KAP Commands =====================================================
+                        -l -length --length \033[3mlengthBit\033[0m, length of the prime, default 1024
+                        -s -safe --safe, generates Sophie Germain Primes (safe primes) - takes much longer
+                        -v -verbose --verbose, shows verbose
+                        =================================================================================
+                        """
         );
     }
 }

@@ -40,7 +40,7 @@ public class Server_Lite {
                     String[] options = Objects.requireNonNull(Validations.readString()).split(" ");
                     switch (options[0]) {
                         case "-dh":
-                            index = SecurityUtil.lookOptions(options,"help");
+                            index = SecurityUtil.lookOptions(options, new String[]{"help","-help","--help","-h","--h"});
                             if(index!=-1)
                                 SecurityDH.help();
                             else {
@@ -50,7 +50,7 @@ public class Server_Lite {
                             }
                             break;
                         case "-mkp":
-                            index = SecurityUtil.lookOptions(options,"help");
+                            index = SecurityUtil.lookOptions(options, new String[]{"help","-help","--help","-h","--h"});
                             if(index!=-1)
                                 SecurityMP.help();
                             else {
@@ -61,6 +61,8 @@ public class Server_Lite {
                             break;
                         case "-sk":
                             outputStream.writeObject("sk");
+                            byte[] sk = SecurityUtil.shareSessionKeys(outputStream, inputStream, options);
+                            System.out.println("SK: " + SecurityUtil.byteArrayToHex(sk));
                             //DH implementation
                             /*
                             byte[] sessionKey = SecurityUtil.generateNumber(Integer.parseInt(options[1]));
@@ -82,12 +84,14 @@ public class Server_Lite {
                             break;
                         case "-help":
                             System.out.println(
-                                    "Commands =============================\n" +
-                                            "-dh , Diffie-Hellman Key-agreement protocol\n" +
-                                            "-mkp , Merkle Puzzle Key-agreement protocol\n" +
-                                            "-sk , share a session key by using a KAP\n" +
-                                            "Type -\033[3moption\033[0m help, for more information regarding each option\n" +
-                                            "================================================\n"
+                                    """
+                                            Commands ===================================================================
+                                            -dh , Diffie-Hellman Key-agreement protocol
+                                            -mkp , Merkle Puzzle Key-agreement protocol
+                                            -sk , share a session key by using a KAP
+                                            Type -\033[3moption\033[0m help, for more information regarding each option
+                                            ============================================================================
+                                            """
                             );
                             break;
                         case "exit":

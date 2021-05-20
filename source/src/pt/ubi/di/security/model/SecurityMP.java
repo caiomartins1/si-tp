@@ -153,19 +153,19 @@ public class SecurityMP implements Serializable {
             int bytesToGuess = 2;
             boolean verbose = false;
 
-            int index = SecurityUtil.lookOptions(options,"-n");
+            int index = SecurityUtil.lookOptions(options,new String[]{"-n"});
             if (index!=-1)
                 N = Integer.parseInt(options[index+1]);
-            index = SecurityUtil.lookOptions(options,"-lK");
+            index = SecurityUtil.lookOptions(options,new String[]{"-lK","-lengthK","--lengthK"});
             if(index!=-1)
                 secretSizeBytes = Integer.parseInt(options[index+1]);
-            index = SecurityUtil.lookOptions(options,"-lk");
+            index = SecurityUtil.lookOptions(options,new String[]{"-lk","-lengthk","--lengthk"});
             if(index!=-1)
                 keySizeBytes = Integer.parseInt(options[index+1]);
-            index = SecurityUtil.lookOptions(options,"-d");
+            index = SecurityUtil.lookOptions(options,new String[]{"-d","-difficulty","--difficulty"});
             if(index!=-1)
                 bytesToGuess = Integer.parseInt(options[index+1]);
-            index = SecurityUtil.lookOptions(options,"-v");
+            index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
             if(index!=-1)
                 verbose = true;
             outputStream.writeObject(verbose);
@@ -408,13 +408,15 @@ public class SecurityMP implements Serializable {
 
     public static void help() {
         System.out.println(
-                "Merkle Puzzles KAP Commands =============================\n" +
-                        "-n \033[3mlengthByte\033[0m, amount of puzzles - default 10000\n" +
-                        "-lK \033[3mlengthByte\033[0m, length in bytes of the secret key - default 32\n" +
-                        "-lk \033[3mlengthByte\033[0m, length in bytes of (puzzle) encryption key - default 16\n" +
-                        "-d \033[3mamountOfBytes\033[0m, amount of bytes to remove from encryption key (the higher the longer) - default 2\n" +
-                        "-v, verbose\n" +
-                        "================================================\n"
+                """
+                        Merkle Puzzles KAP Commands =====================================================================================
+                        -n \033[3mlengthByte\033[0m, amount of puzzles - default 10000
+                        -lK -lengthK --lengthK \033[3mlengthByte\033[0m, length in bytes of the secret key - default 32
+                        -lk -lengthk --lengthk \033[3mlengthByte\033[0m, length in bytes of (puzzle) encryption key - default 16
+                        -d -difficulty --difficulty \033[3mamountOfBytes\033[0m, amount of bytes to remove from encryption key (the higher the longer) - default 2
+                        -v -verbose --verbose, shows verbose
+                        ==================================================================================================================
+                        """
         );
     }
 

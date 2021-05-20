@@ -3,6 +3,9 @@ package pt.ubi.di.security.model;
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -409,12 +412,113 @@ public class SecurityUtil {
         return new IvParameterSpec(iv);
     }
 
-    public static int lookOptions(String[] options,String word) {
+    /**
+     * This function returns the index (position) on the String array where any word from the words array was found
+     * @param options String[] - array where to look for words
+     * @param words String[] - array of the words to look for
+     * @return int - index of the position where the word was found
+     */
+    public static int lookOptions(String[] options,String[] words) {
         for(int i=0;i<options.length;i++) {
-            if(options[i].equals(word))
-                return i;
+            for(String word : words) {
+                if(options[i].equals(word))
+                    return i;
+            }
         }
         return -1;
     }
-    
+
+    private static final int KAP_DH = 0;
+    private static final int KAP_MP = 1;
+    private static final int KAP_RSA = 2;
+    /**
+     * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+        int KAP =KAP_DH;
+        int index = SecurityUtil.lookOptions(options,new String[]{"-mkp"});
+        if(index != -1) {
+            System.out.println(">Starting Session Key distribution using Merkle Puzzle");
+            KAP =KAP_MP;
+        }
+        index = SecurityUtil.lookOptions(options,new String[]{"-resa"});
+        if(index != -1) {
+            System.out.println(">Starting Session Key distribution using RSA");
+            KAP =KAP_RSA;
+        }
+        if(KAP==KAP_DH) {
+            System.out.println(">Starting Session Key distribution using Diffie-Hellman");
+        }
+        try {
+            outputStream.writeInt(KAP);
+        } catch (Exception e) {
+            System.out.println("Error sending KAP: "+ e.getMessage());
+        }
+        int lengthByte = 512;
+        boolean verbose = false;
+        boolean mac = false;
+        index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
+        if (index!=-1)
+            lengthByte = Integer.parseInt(options[index+1]);
+        index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
+        if(index!=-1)
+            verbose = true;
+        index = SecurityUtil.lookOptions(options,new String[]{"-mac"});
+        if(index!=-1)
+            mac = true;
+
+        byte[] sessionKey = SecurityUtil.generateNumber(lengthByte);
+        byte[] cipherKey = new byte[32];
+
+        if(KAP == KAP_DH) {
+            cipherKey =  SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
+        }
+        else if(KAP == KAP_MP) {
+            cipherKey = SecurityMP.startExchange(outputStream, inputStream,new String[]{"-l","32"});
+        }
+        if(cipherKey.length == 0) {
+            System.out.println("Error with cipher key");//TODO
+            return new byte[0];
+        }
+        byte[] cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+        try {
+            outputStream.writeObject(cipher);
+        } catch (Exception e) {
+            System.out.println("Error sending cipher: "+ e.getMessage());
+        }
+        return SecurityUtil.decipherSecurity(cipher, cipherKey);
+    }
+
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] participateSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+        int KAP = KAP_DH;
+        try {
+            KAP = inputStream.readInt();
+        } catch (Exception e) {
+            System.out.println("Error receiving KAP: "+ e.getMessage());
+        }
+        byte[] cipherKey = new byte[32];
+        if(KAP == KAP_DH) {
+            cipherKey =  SecurityDH.receiveExchange(outputStream,inputStream);
+        }
+        else if(KAP == KAP_MP) {
+            cipherKey =  SecurityMP.receiveExchange(outputStream,inputStream);
+        }
+        byte[] cipher = new byte[0];
+        try {
+            cipher = (byte[]) inputStream.readObject();
+        } catch (Exception e) {
+            System.out.println("Error receiving cipher: "+ e.getMessage());
+        }
+        return SecurityUtil.decipherSecurity(cipher, cipherKey);
+    }
 }
