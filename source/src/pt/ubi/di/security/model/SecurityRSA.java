@@ -4,8 +4,8 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 
 public class SecurityRSA {
-
-    BigInteger N, p, q, M, d, e;
+    private BigInteger d, p, q, M;
+    BigInteger N, e;
 
     //definir a pk do outro
     public SecurityRSA(BigInteger p, BigInteger N) {
@@ -57,7 +57,7 @@ public class SecurityRSA {
     //encriptação da mensagem com a chave pública do cliente (other one)
     public BigInteger encript_Message(String plain_message, BigInteger pk, BigInteger n){
         byte[] convert = plain_message.getBytes();
-        BigInteger encripted_msg = (new BigInteger(plain_message)).modPow(pk,n);
+        BigInteger encripted_msg = (new BigInteger(convert)).modPow(pk,n);
         //String encripted_msg = (new BigInteger(plain_message)).modPow(pk,n).toString();
         //devolve o BigInteger da mensagem encriptada com a chave publica
         return encripted_msg;
