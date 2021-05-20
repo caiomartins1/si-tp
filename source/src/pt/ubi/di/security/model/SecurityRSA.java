@@ -1,27 +1,30 @@
 package pt.ubi.di.security.model;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
-public class SecurityRSA {
+public class SecurityRSA implements Serializable {
     private BigInteger d, p, q, M;
     BigInteger N, e;
-
-    //definir a pk do outro
-    public SecurityRSA(BigInteger p, BigInteger N) {
-        this.p = p;
+    private int bitLength = 1024;
+    private boolean verbose;
+    //usado para definir a pk do outro Cliente
+    public SecurityRSA(BigInteger e, BigInteger N) {
+        this.e = e;
         this.N = N;
     }
     
-    public SecurityRSA(int bitLength, boolean verbose) {
-        //SecureRandom r = new SecureRandom();
-        //p = new BigInteger(bitLength, /*int certainty*/ ,r);
+    public SecurityRSA() {
+        //gera 2 números primos
+        this.verbose = false;
         p = SecurityUtil.generatePrime(bitLength,verbose);
         q = SecurityUtil.generatePrime(bitLength,verbose);
         generate_N(p,q);
     }
 
     public void generateValues(int bitLength, boolean verbose) {
+        this.verbose = verbose;
         p = SecurityUtil.generatePrime(bitLength,verbose);
         q = SecurityUtil.generatePrime(bitLength,verbose);
         generate_N(p,q);
@@ -105,16 +108,12 @@ public class SecurityRSA {
     public BigInteger getQ(){
         return q;
     }
-    //private key
     public BigInteger getD() {
         return d;
     }
     // public key
     public BigInteger getE() {
         return e;
-    }
-    public void setE(BigInteger e){
-        this.e = e;
     }
     public BigInteger getN(){
         return N;
@@ -125,5 +124,14 @@ public class SecurityRSA {
     public BigInteger getPhi(){
         return M;
     }
-    
+    public static void help() {
+        System.out.println(
+                """
+                        RSA Commands =====================================================
+                        -l -length --length \033[3mlengthBit\033[0m, length of the prime, default 1024
+                        -v -verbose --verbose, shows verbose
+                        =================================================================================
+                        """
+        );
+    }
 }

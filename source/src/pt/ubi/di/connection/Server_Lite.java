@@ -85,21 +85,24 @@ public class Server_Lite {
 
                             break;
                         case "-rsa":
-                            System.out.println("_____________Starting RSA key exchange_____________");
-                            outputStream.writeObject("rsa");
+                            index = SecurityUtil.lookOptions(options, new String[]{"help","-help","--help","-h","--h"});
+                            if(index!=-1)
+                                SecurityRSA.help();
+                            else {
+                                System.out.println("_____________Starting RSA key exchange_____________");
+                                outputStream.writeObject("rsa");
 
-                            //pk do outro Cliente
-                            SecurityRSA factoryRSA_1;
-                            factoryRSA_1 = new SecurityRSA((BigInteger) inputStream.readObject(), (BigInteger) inputStream.readObject());
+                                //pk do outro Cliente
+                                SecurityRSA factoryRSA_1 = (SecurityRSA)inputStream.readObject();
 
-                            //gera as suas chaves de modo a poder enviar mensagens encriptadas
-                            SecurityRSA factoryRSA = new SecurityRSA(1024,false);
-                            factoryRSA.calculate_Keys();
+                                //gera as suas chaves de modo a poder enviar mensagens encriptadas
+                                SecurityRSA factoryRSA = new SecurityRSA();
+                                factoryRSA.calculate_Keys();
 
-                            //envio da chave pública do Cliente
-                            outputStream.writeObject(factoryRSA.getE());
-                            outputStream.writeObject(factoryRSA.getN());
-
+                                //escreve e envia chave pública do Cliente - usa para encriptar mensagens a enviar
+                                SecurityRSA publicKey = new SecurityRSA(factoryRSA.getE(),factoryRSA.getN());
+                                outputStream.writeObject(publicKey);
+                            }
                             break;
                         case "-help":
                             System.out.println(
@@ -108,6 +111,7 @@ public class Server_Lite {
                                             -dh , Diffie-Hellman Key-agreement protocol
                                             -mkp , Merkle Puzzle Key-agreement protocol
                                             -sk , share a session key by using a KAP
+                                            -rsa, share messages using RSA - public and secret key
                                             Type -\033[3moption\033[0m help, for more information regarding each option
                                             ============================================================================
                                             """
