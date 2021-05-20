@@ -1,6 +1,8 @@
 package pt.ubi.di.connection;
 
 import pt.ubi.di.Model.ApplyClientConnection;
+import pt.ubi.di.security.model.SecurityDH;
+import pt.ubi.di.security.model.SecurityUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -18,6 +20,8 @@ public class Connection extends Thread {
     private String connectionName;
     private ArrayList<ApplyClientConnection> invites;
     private boolean working = true;
+
+    byte[] sessionKey;
 
     /**
      * Constructor of the class Connection, this class is a Thread responsible to handle with the
@@ -58,13 +62,35 @@ public class Connection extends Thread {
      * @throws IOException
      */
     public void handleAction(String[] action) throws IOException {
+        int index = -1;
         switch (action[0]) {
-            case "-init" -> commandChangeConnectionName(action[1]);
-            case "-help" -> commandHelp();
-            case "-exit" -> commandExit();
-            case "-list" -> commandListOfUsers();
-            case "-connect" -> commandConnectToAnotherClient(action);
-            case "-invites" -> outputStream.writeObject(invites);
+            case "-init":
+                commandChangeConnectionName(action[1]);
+                break;
+            case "-help":
+                commandHelp();
+                break;
+            case "-exit":
+                commandExit();
+                break;
+            case "-list":
+                commandListOfUsers();
+                break;
+            case "-connect":
+                index = SecurityUtil.lookOptions(action,new String[]{"-sk","-sessionKey","--sessionKey"});
+                if(index != -1)
+                    sessionKey = this.receiveSessionKey();
+                commandConnectToAnotherClient(action);
+                break;
+            case "-invites":
+                outputStream.writeObject(invites);
+                if(sessionKey!=null) {
+                    outputStream.writeBoolean(true);
+                    this.sendSessionKey();
+                }
+                else
+                    outputStream.writeBoolean(false);
+                break;
         }
     }
 
@@ -96,16 +122,18 @@ public class Connection extends Thread {
     //Send to the client the commands available
     public void commandHelp() throws IOException {
         String text =
-                "Standard Commands =============================\n" +
-                        "-list -> list of all users connected in the serve\n" +
-                        "-init -> change the name of the connection\n" +
-                        "-help -> show all the commands available\n" +
-                        "-exit -> close the connection with the server\n" +
-                        "-invites -> show the invites received from the serve or another clients\n" +
-                        "-connect\n" +
-                        "    ...   <connection name> -start -> send a message to <connection name> asking to make a channel and start the server\n" +
-                        "    ...   <connection name> -> send a message to <connection name> asking to make a channel\n" +
-                        "================================================";
+                """
+                        Standard Commands =============================
+                        -list -> list of all users connected in the serve
+                        -init -> change the name of the connection
+                        -help -> show all the commands available
+                        -exit -> close the connection with the server
+                        -invites -> show the invites received from the serve or another clients may use sessionKey 
+                        -connect
+                            ...   <connection name> -start -> send a message to <connection name> asking to make a channel and start the server
+                            ...   <connection name> -> send a message to <connection name> asking to make a channel
+                            ...   [-sk] -> connect implementing SessionKey
+                        ================================================""";
         outputStream.writeObject(text);
     }
 
@@ -146,6 +174,10 @@ public class Connection extends Thread {
         if (connection1 != null) {
             String ip = socket.getInetAddress().getLocalHost().getHostAddress();
 
+            int index = SecurityUtil.lookOptions(action,new String[]{"-sk","-sessionKey","--sessionKey"});
+            if(index != -1)
+                connection1.setSessionKey(sessionKey);
+
             String meClient = "The " + connectionName + " want to connect with you!";
 
             ApplyClientConnection aClient = new ApplyClientConnection(ip, 2222, meClient, connectionName);
@@ -182,6 +214,29 @@ public class Connection extends Thread {
                 }
             }
         }
+    }
+
+    /**
+     * Function to send a session key by using a KAP to encrypt the SK
+     * Uses a predefined sk
+     * Starts the communication
+     */
+    private void sendSessionKey() {
+        System.out.println("Sending sessionKey ...");
+        byte[] sessionKey2 = SecurityUtil.shareSessionKeys(outputStream,inputStream,new String[]{},sessionKey);
+        System.out.println("Session key sent: " + SecurityUtil.byteArrayToHex(sessionKey2));
+    }
+
+    /**
+     * Function to receive a session key from a client, to be later sent to another client
+     * Does not start the communication
+     * @return byte[] the session key
+     */
+    private byte[] receiveSessionKey() {
+        System.out.println("Receiving sessionKey ...");
+        byte[] sessionKey = SecurityUtil.participateSessionKeys(outputStream,inputStream);
+        System.out.println("Session key to share: " + SecurityUtil.byteArrayToHex(sessionKey));
+        return sessionKey;
     }
 
     // =============================================================================
@@ -226,4 +281,7 @@ public class Connection extends Thread {
         this.inputStream = inputStream;
     }
 
+    public void setSessionKey(byte[] sessionKey) {
+        this.sessionKey = sessionKey;
+    }
 }

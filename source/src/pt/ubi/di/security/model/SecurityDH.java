@@ -99,6 +99,7 @@ public class SecurityDH{
             if(index!=-1)
                 safe = true;
             SecurityDH factoryDH = new SecurityDH(lengthBit,safe,verbose);
+            outputStream.writeBoolean(verbose);
             outputStream.writeObject(factoryDH.getStoreValue());
             DiffieHellman resultDH = (DiffieHellman) inputStream.readObject();
             factoryDH.generateKey(resultDH.getX());
@@ -119,8 +120,9 @@ public class SecurityDH{
     public static byte[] receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
         try {
             System.out.println(">Starting Diffie Hellman key exchange");
+            boolean verbose = inputStream.readBoolean();
             DiffieHellman generatedValues = (DiffieHellman) inputStream.readObject();
-            SecurityDH resultDH = new SecurityDH(generatedValues.getG(),generatedValues.getP(),false);
+            SecurityDH resultDH = new SecurityDH(generatedValues.getG(),generatedValues.getP(),verbose);
             resultDH.generateValues(false);
             outputStream.writeObject(resultDH.getStoreValue());
             resultDH.generateKey(generatedValues.getX());

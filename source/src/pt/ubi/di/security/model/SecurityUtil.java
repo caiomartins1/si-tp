@@ -305,6 +305,14 @@ public class SecurityUtil {
             System.out.println("(ENCRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
             return new  byte[0];
         }
+        else if(message == null) {
+            System.out.println("(ENCRYPTION) -> Message not valid");
+            return new  byte[0];
+        }
+        else if(message.length==0){
+            System.out.println("(ENCRYPTION) -> Message not valid");
+            return new  byte[0];
+        }
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec ivParameterSpec = generateIv();
         try {
@@ -318,6 +326,7 @@ public class SecurityUtil {
         } catch (Exception e) {
             System.out.println("Error encrypting message (AES): " + e.getMessage());
         }
+        System.out.println(">Error encrypting.");
         return new byte[0];
     }
 
@@ -334,6 +343,14 @@ public class SecurityUtil {
             System.out.println("(DECRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
             return new  byte[0];
         }
+        else if(finalCipher == null) {
+            System.out.println("(ENCRYPTION) -> Cipher not valid");
+            return new  byte[0];
+        }
+        else if(finalCipher.length==0){
+            System.out.println("(DECRYPTION) -> Cipher not valid");
+            return new  byte[0];
+        }
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
         try {
@@ -343,6 +360,7 @@ public class SecurityUtil {
         } catch (Exception e) {
             System.out.println("Error decrypting cipher (AES): " + e.getMessage());
         }
+        System.out.println(">Error decrypting.");
         return new byte[0];
     }
 
@@ -416,7 +434,7 @@ public class SecurityUtil {
      * This function returns the index (position) on the String array where any word from the words array was found
      * @param options String[] - array where to look for words
      * @param words String[] - array of the words to look for
-     * @return int - index of the position where the word was found
+     * @return int - index of the position where the word was found, returns -1 if no word was found
      */
     public static int lookOptions(String[] options,String[] words) {
         for(int i=0;i<options.length;i++) {
@@ -431,14 +449,16 @@ public class SecurityUtil {
     private static final int KAP_DH = 0;
     private static final int KAP_MP = 1;
     private static final int KAP_RSA = 2;
+
     /**
      * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
      *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param sessionKey byte[] - session key wished to be shared
      * @return byte[] - returns the key in byte array format
      */
-    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options, byte[] sessionKey) {
         int KAP =KAP_DH;
         int index = SecurityUtil.lookOptions(options,new String[]{"-mkp"});
         if(index != -1) {
@@ -458,12 +478,8 @@ public class SecurityUtil {
         } catch (Exception e) {
             System.out.println("Error sending KAP: "+ e.getMessage());
         }
-        int lengthByte = 512;
-        boolean verbose = false;
+        boolean verbose = false;//TODO
         boolean mac = false;
-        index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
-        if (index!=-1)
-            lengthByte = Integer.parseInt(options[index+1]);
         index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
         if(index!=-1)
             verbose = true;
@@ -471,7 +487,6 @@ public class SecurityUtil {
         if(index!=-1)
             mac = true;
 
-        byte[] sessionKey = SecurityUtil.generateNumber(lengthByte);
         byte[] cipherKey = new byte[32];
 
         if(KAP == KAP_DH) {
@@ -491,6 +506,21 @@ public class SecurityUtil {
             System.out.println("Error sending cipher: "+ e.getMessage());
         }
         return SecurityUtil.decipherSecurity(cipher, cipherKey);
+    }
+
+    /**
+     * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+        int lengthByte = 512;
+        int index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
+        if (index!=-1)
+            lengthByte = Integer.parseInt(options[index+1]);
+        return shareSessionKeys(outputStream,inputStream,options,SecurityUtil.generateNumber(lengthByte));
     }
 
     /**
@@ -520,5 +550,12 @@ public class SecurityUtil {
             System.out.println("Error receiving cipher: "+ e.getMessage());
         }
         return SecurityUtil.decipherSecurity(cipher, cipherKey);
+    }
+
+    /**
+     * TODO
+     */
+    public static void shareSessionHelp() {
+
     }
 }
