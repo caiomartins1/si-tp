@@ -90,7 +90,7 @@ public class Server_Lite {
 
                             //pk do outro Cliente
                             SecurityRSA factoryRSA_1;
-                            factoryRSA_1 = new SecurityRSA((BigInteger)inputStream.readObject(), (BigInteger) inputStream.readObject());
+                            factoryRSA_1 = new SecurityRSA((BigInteger) inputStream.readObject(), (BigInteger) inputStream.readObject());
 
                             //gera as suas chaves de modo a poder enviar mensagens encriptadas
                             SecurityRSA factoryRSA = new SecurityRSA(1024,false);
