@@ -1,24 +1,27 @@
 package pt.ubi.di.security.model;
 
+import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import java.util.HashSet;
 import java.util.Random;
 
 /**
- * TODO need to maybe create a way to generate safe primes
- * secureRandomGenerator
- *  //byte[] bytes = new byte[20];
- *  //secureRandomGenerator.nextBytes(bytes);
+ * Class for utilities to be used along the program.
+ * Provides encryption methods, number generators and others ....
  */
 public class SecurityUtil {
 
     static SecureRandom secureRandomGenerator = new SecureRandom(); // uses SHA1PRNG
     static Random random = new Random();
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    private static final int HASHSIZE=20; // size of the hash produced by SHA1
+    private static final int BOCK_SIZE = 16;
 
     /**
      * Generates a prime number
@@ -27,14 +30,14 @@ public class SecurityUtil {
      * @return BigInteger - (probably) prime number
      */
     public static BigInteger generatePrime(int bitLength, boolean verbose) {
-        BigInteger prime = BigInteger.probablePrime(bitLength,random/*TODO make sure its not fucking anything serious*/);
+        BigInteger prime = BigInteger.probablePrime(bitLength,secureRandomGenerator);
         if (verbose)
-            System.out.println("--->Random prime(" +bitLength+ "bits)(p): "+prime.toString());
+            System.out.println("Random prime(" +bitLength+ "bits)(p): "+prime.toString());
         return prime;
     }
 
     /**
-     * Generates a safe prime number<p> TODO:complete description
+     * Generates a safe prime number<p>
      * Harder to attack -> Takes longer to generate
      * @param bitLength int - amount of bits desired
      * @param verbose  boolean - print messages
@@ -68,10 +71,10 @@ public class SecurityUtil {
     public static BigInteger generateNumber(BigInteger maxValue, boolean verbose) {
         BigInteger number;
         do {
-            number = new BigInteger(maxValue.bitLength(), random/*TODO make sure its not fucking anything serious*/);
+            number = new BigInteger(maxValue.bitLength(), random);
         } while (number.compareTo(maxValue) >= 0);
         if (verbose)
-            System.out.println("--->Random number: "+number.toString());
+            System.out.println("Random number: "+number.toString());
         return number;
     }
 
@@ -85,7 +88,7 @@ public class SecurityUtil {
         for (int i=0;i<byteSize;i++) {
             byte[] tmp = new byte[1];
             secureRandomGenerator.nextBytes(tmp);
-            if ((int)tmp[0]<0) {//TODO dafuq does this do
+            if ((int)tmp[0]<0) {
                 tmp[0] += 128;
             }
             bytesArray[i]=tmp[0];
@@ -102,16 +105,15 @@ public class SecurityUtil {
     public static boolean checkIfPrime(BigInteger value, boolean verbose) {
         if (value.isProbablePrime(5)) { //kinda useless
             if (verbose)
-                System.out.println("--->Value: " + value + "\n    is a prime.");
+                System.out.println("Value: " + value + "\n    is a prime.");
             return true;
         }
         if (verbose)
-            System.out.println("--->Value: " + value + "\n    is not a prime.");
+            System.out.println("Value: " + value + "\n    is not a prime.");
         return false;
     }
 
     /**
-     * TODO: check
      * Function to check if a given value is a safe prime or not - NOT AS SLOW<p>
      * provides 2 different methods
      * @param value BigInteger - value to test if it is a safe prime
@@ -128,23 +130,21 @@ public class SecurityUtil {
         }
         if (checkIfPrime(result,verbose)) {
             if (verbose)
-                System.out.println("--->Value: " + value + "\n    is a safe prime.");
+                System.out.println("Value: " + value + "\n    is a safe prime.");
             return true;
         }
         if (verbose)
-            System.out.println("--->Value: " + value + "\n    is not a safe prime.");
+            System.out.println("Value: " + value + "\n    is not a safe prime.");
         return false;
     }
 
     /**
      * Function to find prime factors of a prime number, used to find a generator, Alternative Version, LESS time consuming<p>
      * It finds one or two prime factors only!!!!
-     * TODO: Chance it might not work everytime?
      * @param storage HashSet<BigInteger> - hash storage
      * @param value BigInteger - prime to look for factors for
-     * @param verbose boolean - print messages
      */
-    private static void findPrimeFactors(HashSet<BigInteger> storage, BigInteger value, boolean verbose) {
+    private static void findPrimeFactors(HashSet<BigInteger> storage, BigInteger value) {
         boolean flag = false;
         int count = 0;
         int arbitraryNumber = 1;
@@ -157,13 +157,9 @@ public class SecurityUtil {
                 break;
             }
             if (i.isProbablePrime(5)) {//if value mod i == 0
-                if (verbose)
-                    System.out.println("--->Found prime factor Alt: " + i);
                 storage.add(i);
                 value = value.divide(i);
                 if (count>=arbitraryNumber) {
-                    if (verbose)
-                        System.out.println("--->Finishing finding prime factors.");
                     flag = true;
                     break;
                 }
@@ -183,9 +179,6 @@ public class SecurityUtil {
      *
      * PS: lets never do this again
      *
-     * TODO IMPORTANT!!!!!!!: maybe be able to optimize
-     * TODO Need to format function
-     *
      * @param p BigInteger - assume its prime
      * @param verbose boolean - print messages
      * @return BigInteger - generator
@@ -195,10 +188,10 @@ public class SecurityUtil {
         BigInteger phi = p.subtract(BigInteger.ONE);
         BigInteger result;
 
-        findPrimeFactors(storage,phi,verbose);
+        findPrimeFactors(storage,phi);
 
         if (verbose)
-            System.out.println("--->Finished finding prime factors.");
+            System.out.println("Finished finding prime factors.");
 
         for (BigInteger r = BigInteger.TWO;r.compareTo(phi)<=0;r=r.add(BigInteger.ONE)) {
             boolean flag = false;
@@ -211,30 +204,31 @@ public class SecurityUtil {
             }
             if (!flag) {
                 if (verbose)
-                    System.out.println("--->Smallest generator g found: "+r.toString());
+                    System.out.println("Smallest generator g found: "+r.toString());
                 return r;
             }
         }
         if (verbose)
-            System.out.println("--->Could not find a suitable generator :(");
+            System.out.println("Could not find a suitable generator :(");
         return BigInteger.ZERO;
     }
 
     /**
-     * Convert an array of bytes to hex String
-     * @param byteArr byte[] - array of bytes to be converted to a hex String
-     * @return String - String representation of hex value.
+     * @param byteArr byte array to be converted to a hex String
+     * @return String representation of hex value.
      * <p>
-     * source: https://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java#9855338
+     * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
      */
     public static String byteArrayToHex(byte[] byteArr) {
-        char[] hexChars = new char[byteArr.length * 2];
-        for (int j = 0; j < byteArr.length; j++) {
-            int v = byteArr[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        BigInteger value = new BigInteger(1, byteArr);
+        String hex = value.toString(16);
+
+        int paddingLength = (byteArr.length * 2) - hex.length();
+        if (paddingLength > 0) {
+            return String.format("%0" + paddingLength + "d", 0) + hex;
+        } else {
+            return hex;
         }
-        return new String(hexChars);
     }
 
     /**
@@ -278,27 +272,6 @@ public class SecurityUtil {
     }
 
     /**
-     * Function to create a hash of a message<p>
-     * md = MessageDigest.getInstance(algo);<p>
-     * md.update(message);<p>
-     * md.digest();
-     * @param algo String - String of algorithm to use
-     * @param message String - String of message to digest
-     * @return byte[] - array of bytes of the message digest (hash)
-     */
-    public static byte[] Hash(String algo,String message) {
-        MessageDigest md = null;
-        try {
-            md = MessageDigest.getInstance(algo);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        assert md != null;
-        md.update(message.getBytes());
-        return md.digest();
-    }
-
-    /**
      * Convert an int number to its byte[] representation
      * @param number int - number to convert
      * @return byte[] - array byte representation of the int number
@@ -314,5 +287,275 @@ public class SecurityUtil {
      */
     public static int byteToInt(byte[] number) {
         return new BigInteger(number).intValue();
+    }
+
+    //-------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------Encryption Functions-----------------------------------------------
+
+    /**
+     * Function to encrypt a message.
+     * Uses AES-CBC
+     * iv is a 16 byte array that is appended at the start of the cipher
+     * @param message byte[] - message desired to encrypt
+     * @param key byte[] - byte array key
+     * @return byte[] -  encrypted message, return empty array if unable to cipher
+     */
+    public static byte[] encryptSecurity(byte[] message,byte[] key) {
+        if(!(key.length ==16 || key.length ==24 || key.length ==32)){
+            System.out.println("(ENCRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
+            return new  byte[0];
+        }
+        else if(message == null) {
+            System.out.println("(ENCRYPTION) -> Message not valid");
+            return new  byte[0];
+        }
+        else if(message.length==0){
+            System.out.println("(ENCRYPTION) -> Message not valid");
+            return new  byte[0];
+        }
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivParameterSpec = generateIv();
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec);
+            byte[] cipherBytes = cipher.doFinal(message);
+            byte[] finalCipher = new byte[cipherBytes.length+ivParameterSpec.getIV().length];
+            System.arraycopy(ivParameterSpec.getIV(),0,finalCipher,0,ivParameterSpec.getIV().length);
+            System.arraycopy(cipherBytes,0,finalCipher,ivParameterSpec.getIV().length,cipherBytes.length);
+            return finalCipher;
+        } catch (Exception e) {
+            System.out.println("Error encrypting message (AES): " + e.getMessage());
+        }
+        System.out.println(">Error encrypting.");
+        return new byte[0];
+    }
+
+    /**
+     * Function to decipher a cipher.
+     * Uses AES-CBC to decipher
+     * iv is a 16 byte array that is kept at the start of the cipher
+     * @param finalCipher byte[] - cipher in byte array format
+     * @param key byte[] - byte array key
+     * @return byte[] -  decrypted cipher, return empty array if unable to decipher
+     */
+    public static byte[] decipherSecurity(byte[] finalCipher,byte[] key) {
+        if(!(key.length ==16 || key.length ==24 || key.length ==32)){
+            System.out.println("(DECRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
+            return new  byte[0];
+        }
+        else if(finalCipher == null) {
+            System.out.println("(ENCRYPTION) -> Cipher not valid");
+            return new  byte[0];
+        }
+        else if(finalCipher.length==0){
+            System.out.println("(DECRYPTION) -> Cipher not valid");
+            return new  byte[0];
+        }
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
+            return cipher.doFinal(finalCipher,BOCK_SIZE,finalCipher.length - BOCK_SIZE);
+        } catch (Exception e) {
+            System.out.println("Error decrypting cipher (AES): " + e.getMessage());
+        }
+        System.out.println(">Error decrypting.");
+        return new byte[0];
+    }
+
+    /**
+     * Create noise to encrypt message with
+     * Example: NOISE(40B): SHA1(key)(20B) | SHA1(SHA1(key))(20B)
+     * @param key byte[] - array of bytes to be used to generate noise
+     * @param sizeBytes int - size in bytes of the noise
+     * @return byte[]- noise in byte array
+     */
+    private static byte[] createNoise(byte[] key, int sizeBytes) {
+        int index = 0;
+        int n = sizeBytes /HASHSIZE;
+        byte[] prevDigest = SecurityUtil.hash("SHA1",key);
+        byte[] noise = new byte[sizeBytes];
+        System.arraycopy(prevDigest,0,noise,index,(sizeBytes <HASHSIZE) ? noise.length : prevDigest.length);
+        index = prevDigest.length;
+        for(int i=1;i<n;i++) {
+            byte[] digest = SecurityUtil.hash("SHA1",prevDigest);
+            System.arraycopy(digest,0,noise,index,(index <HASHSIZE) ? noise.length : digest.length);
+            index += digest.length;
+            prevDigest = digest;
+        }
+        return noise;
+    }
+
+    /**
+     * One time pad encryption by doing --> message XOR key
+     * @param message byte[] - message to encrypt/decipher
+     * @param key byte[] - array of bytes to be used to generate noise
+     * @param sizeBytes int - size in bytes of the noise
+     * @return byte[] of encrypted/decrypted message
+     */
+    public static byte[] oneTimePadEncrypt(byte[] message, byte[] key, int sizeBytes) {
+        byte[] noise = createNoise(key,sizeBytes);
+        if (message.length != noise.length) {
+            System.out.println("OneTimePadEncrypt -> Error Key not same size as message");
+            return new byte[0];
+        }
+        byte[] cipherBytes = new byte[message.length];
+        for(int i=0;i<message.length;i++) {
+            cipherBytes[i] = (byte) (message[i] ^ noise[i]);
+        }
+        return cipherBytes;
+    }
+
+
+    public static byte[] hmac(byte[] key) {
+        byte[] msd = hash("SHA256", key);
+        return  encryptSecurity(msd, key);
+    }
+
+    public static boolean hmacCheck(byte[] hmac, byte[] key) {
+        byte[] msg = decipherSecurity(hmac, key);
+        byte[] msd = hash("SHA256", key);
+        return checkHash(msg, msd);
+    }
+
+    /**
+     * Function to initialize an byte array to be used as iv for AES encryption
+     * array size = 16Bytes
+     * @return IvParameterSpec - returns the iv in the required state
+     */
+    public static IvParameterSpec generateIv() {
+        byte[] iv = new byte[BOCK_SIZE];
+        secureRandomGenerator.nextBytes(iv);
+        return new IvParameterSpec(iv);
+    }
+
+    /**
+     * This function returns the index (position) on the String array where any word from the words array was found
+     * @param options String[] - array where to look for words
+     * @param words String[] - array of the words to look for
+     * @return int - index of the position where the word was found, returns -1 if no word was found
+     */
+    public static int lookOptions(String[] options,String[] words) {
+        for(int i=0;i<options.length;i++) {
+            for(String word : words) {
+                if(options[i].equals(word))
+                    return i;
+            }
+        }
+        return -1;
+    }
+
+    private static final int KAP_DH = 0;
+    private static final int KAP_MP = 1;
+    private static final int KAP_RSA = 2;
+
+    /**
+     * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param sessionKey byte[] - session key wished to be shared
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options, byte[] sessionKey) {
+        int KAP =KAP_DH;
+        int index = SecurityUtil.lookOptions(options,new String[]{"-mkp"});
+        if(index != -1) {
+            System.out.println(">Starting Session Key distribution using Merkle Puzzle");
+            KAP =KAP_MP;
+        }
+        index = SecurityUtil.lookOptions(options,new String[]{"-resa"});
+        if(index != -1) {
+            System.out.println(">Starting Session Key distribution using RSA");
+            KAP =KAP_RSA;
+        }
+        if(KAP==KAP_DH) {
+            System.out.println(">Starting Session Key distribution using Diffie-Hellman");
+        }
+        try {
+            outputStream.writeInt(KAP);
+        } catch (Exception e) {
+            System.out.println("Error sending KAP: "+ e.getMessage());
+        }
+        boolean verbose = false;//TODO
+        boolean mac = false;
+        index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
+        if(index!=-1)
+            verbose = true;
+        index = SecurityUtil.lookOptions(options,new String[]{"-mac"});
+        if(index!=-1)
+            mac = true;
+
+        byte[] cipherKey = new byte[32];
+
+        if(KAP == KAP_DH) {
+            cipherKey =  SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
+        }
+        else if(KAP == KAP_MP) {
+            cipherKey = SecurityMP.startExchange(outputStream, inputStream,new String[]{"-l","32"});
+        }
+        if(cipherKey.length == 0) {
+            System.out.println("Error with cipher key");//TODO
+            return new byte[0];
+        }
+        byte[] cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+        try {
+            outputStream.writeObject(cipher);
+        } catch (Exception e) {
+            System.out.println("Error sending cipher: "+ e.getMessage());
+        }
+        return SecurityUtil.decipherSecurity(cipher, cipherKey);
+    }
+
+    /**
+     * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+        int lengthByte = 512;
+        int index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
+        if (index!=-1)
+            lengthByte = Integer.parseInt(options[index+1]);
+        return shareSessionKeys(outputStream,inputStream,options,SecurityUtil.generateNumber(lengthByte));
+    }
+
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] participateSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+        int KAP = KAP_DH;
+        try {
+            KAP = inputStream.readInt();
+        } catch (Exception e) {
+            System.out.println("Error receiving KAP: "+ e.getMessage());
+        }
+        byte[] cipherKey = new byte[32];
+        if(KAP == KAP_DH) {
+            cipherKey =  SecurityDH.receiveExchange(outputStream,inputStream);
+        }
+        else if(KAP == KAP_MP) {
+            cipherKey =  SecurityMP.receiveExchange(outputStream,inputStream);
+        }
+        byte[] cipher = new byte[0];
+        try {
+            cipher = (byte[]) inputStream.readObject();
+        } catch (Exception e) {
+            System.out.println("Error receiving cipher: "+ e.getMessage());
+        }
+        return SecurityUtil.decipherSecurity(cipher, cipherKey);
+    }
+
+    /**
+     * TODO
+     */
+    public static void shareSessionHelp() {
+
     }
 }

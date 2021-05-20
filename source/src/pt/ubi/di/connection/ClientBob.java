@@ -2,7 +2,9 @@ package pt.ubi.di.connection;
 
 import pt.ubi.di.Model.ApplyClientConnection;
 import pt.ubi.di.Model.Validations;
-import pt.ubi.di.pbkdf.PBKDF2;
+import pt.ubi.di.security.model.PBKDF2;
+import pt.ubi.di.security.model.SecurityDH;
+import pt.ubi.di.security.model.SecurityUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -67,9 +69,7 @@ public class ClientBob {
             System.out.println(inputStream.readObject());
             while (working) {
                 System.out.print("Commands>");
-//                ans = validInputs(Validations.readString().split("-"));//TODO: added, here is call the validInput
                 ans = Validations.readString().split(" ");
-//                for (String item : ans) {
                 outputStream.writeObject(ans);
                 switch (ans[0]) {
                     case "-list":
@@ -78,11 +78,16 @@ public class ClientBob {
                         System.out.println(inputStream.readObject());
                         break;
                     case "-connect":
+                        int index = SecurityUtil.lookOptions(ans,new String[]{"-sk","-sessionKey","--sessionKey"});
+                        if(index != -1)
+                        {
+                            byte[] key = SecurityUtil.shareSessionKeys(outputStream,inputStream,new String[]{});
+                            System.out.println(">Session key sent to server: " + SecurityUtil.byteArrayToHex(key));
+                        }
                         System.out.println(inputStream.readObject());
-                        if(ans.length==3) {
-                            if (ans[2].equals("-start")) {
-                                Server_Lite sl = new Server_Lite(2222);
-                            }
+                        index = SecurityUtil.lookOptions(ans,new String[]{"-start"});
+                        if(index != -1) {
+                            Server_Lite sl = new Server_Lite(2222);
                         }
                         break;
                     case "-start"://Now we can start the connection in the same time we invite another client (if need help type -help in the terminal)
@@ -96,7 +101,8 @@ public class ClientBob {
                         break;
                     case "-invites":
                         ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
-                        handleMessages(aP);
+                        boolean useSK =(boolean) inputStream.readObject();
+                        handleMessages(aP, useSK);
                         break;
                     case "-pbk":
                         PBKDF2.handlePBKDFParams(ans);
@@ -137,7 +143,7 @@ public class ClientBob {
      * @param aP the list with the invites to make a connection pont-to-pont with another clients in the currently server,
      *           in this list the client can create the server and accept the invites.
      */
-    public void handleMessages(ArrayList<ApplyClientConnection> aP) {
+    public void handleMessages(ArrayList<ApplyClientConnection> aP, boolean useSK) {
         if (aP.size() > 0) {
             for (ApplyClientConnection item : aP) {
                 System.out.print(item.getMessage() + "(Y|N):");
@@ -147,6 +153,10 @@ public class ClientBob {
                         System.out.println("Server on!");
                         Server_Lite sl = new Server_Lite(item.getPort());
                     } else {
+                        if(useSK) {
+                            byte[] sessionKey = SecurityUtil.participateSessionKeys(outputStream,inputStream);
+                            System.out.println(">Session Key received: " + SecurityUtil.byteArrayToHex(sessionKey));
+                        }
                         System.out.println("Client on!");
                         Client_Lite cl = new Client_Lite(item.getIP(), item.getPort());
                     }
