@@ -101,7 +101,7 @@ public class Client {
                         break;
                     case "-invites":
                         ArrayList<ApplyClientConnection> aP = (ArrayList<ApplyClientConnection>) inputStream.readObject();
-                        boolean useSK = inputStream.readBoolean();
+                        boolean useSK =(boolean) inputStream.readObject();
                         handleMessages(aP, useSK);
                         break;
                     case "-pbk":

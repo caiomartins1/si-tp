@@ -4,11 +4,13 @@ package pt.ubi.di.connection;
 import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.SecurityDH;
 import pt.ubi.di.security.model.SecurityMP;
+import pt.ubi.di.security.model.SecurityRSA;
 import pt.ubi.di.security.model.SecurityUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Objects;

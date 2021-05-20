@@ -64,10 +64,10 @@ public class SecurityRSA {
     }
 
     public BigInteger encript_hashMessage(String plain_message, BigInteger pk, BigInteger n){
-        //byte[] convert = plain_message.getBytes();
+        byte[] convert = plain_message.getBytes();
         //determinar o hash da mensagem decifrada
         String hash = "SHA-256";
-        byte[] hmsg = SecurityUtil.hash(hash,plaintext);
+        byte[] hmsg = SecurityUtil.hash(hash,convert);
         BigInteger encripted_msg = (new BigInteger(hmsg)).modPow(pk,n);
         //String encripted_msg = (new BigInteger(plain_message)).modPow(pk,n).toString();
         //devolve o BigInteger da mensagem encriptada com a chave publica

@@ -21,7 +21,7 @@ public class Connection extends Thread {
     private ArrayList<ApplyClientConnection> invites;
     private boolean working = true;
 
-    byte[] sessionKey;
+    byte[] sessionKey = null;
 
     /**
      * Constructor of the class Connection, this class is a Thread responsible to handle with the
@@ -85,11 +85,12 @@ public class Connection extends Thread {
             case "-invites":
                 outputStream.writeObject(invites);
                 if(sessionKey!=null) {
-                    outputStream.writeBoolean(true);
+                    outputStream.writeObject(true);
                     this.sendSessionKey();
                 }
-                else
-                    outputStream.writeBoolean(false);
+                else {
+                    outputStream.writeObject(false);
+                }
                 break;
         }
     }
