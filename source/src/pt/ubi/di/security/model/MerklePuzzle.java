@@ -120,8 +120,8 @@ public class MerklePuzzle implements Serializable {
     }
 
     public String toStringSolved() {
-        return  "indexEncrypted=" + SecurityUtil.byteArrayToString(indexEncrypted) +
-                "\nindexHashEncrypted=" + SecurityUtil.byteArrayToString(indexHashEncrypted);
+        return  "indexEncrypted= " + SecurityUtil.byteArrayToString(indexEncrypted) +
+                "\nindexHashEncrypted= " + SecurityUtil.byteArrayToString(indexHashEncrypted);
     }
 
     @Override

@@ -1,32 +1,15 @@
-package pt.ubi.di.pbkdf;
+package pt.ubi.di.security.model;
+
+import pt.ubi.di.security.model.SecurityUtil;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 
 
 public class PBKDF2 {
-
-    /**
-     * @param byteArr byte array to be converted to a hex String
-     * @return String representation of hex value.
-     * <p>
-     * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
-     */
-    private static String byteArrayToHex(byte[] byteArr) {
-        BigInteger value = new BigInteger(1, byteArr);
-        String hex = value.toString(16);
-
-        int paddingLength = (byteArr.length * 2) - hex.length();
-        if (paddingLength > 0) {
-            return String.format("%0" + paddingLength + "d", 0) + hex;
-        } else {
-            return hex;
-        }
-    }
 
     /**
      * @param password   String password from which a derived key is generated
@@ -50,7 +33,7 @@ public class PBKDF2 {
             byte[] res = key.getEncoded();
 
 
-            return byteArrayToHex(res);
+            return SecurityUtil.byteArrayToHex(res);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             System.out.println("The provided algorithm is not valid");
             return "";
