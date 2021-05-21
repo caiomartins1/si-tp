@@ -3,6 +3,7 @@ package pt.ubi.di.connection;
 import pt.ubi.di.Model.ApplyClientConnection;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -19,11 +20,13 @@ public class Server {
     public Server(int port) {
         connectionsAvailable = new ArrayList<>();
         try {
+            System.out.println("IP: " + InetAddress.getLocalHost().getHostAddress());
             serverSocket = new ServerSocket(port);
             System.out.println("Waiting new connections!");
             while (true) {
                 socket = serverSocket.accept();
                 connectionsAvailable.add(new Connection(socket, connectionsAvailable));
+                System.out.println("New connection");
             }
         } catch (IOException e) {
             System.out.println("Erro: " + e.getMessage());
