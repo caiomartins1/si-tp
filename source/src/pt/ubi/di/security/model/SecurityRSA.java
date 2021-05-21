@@ -59,6 +59,37 @@ public class SecurityRSA implements Serializable {
         //sk = d
     }
 
+    //--------------------------------------------------------------------------------------
+    //assinar o hash da mensagem com a sua chave privada
+    public BigInteger sign_Message(String plain_message){
+        byte[] convert = plain_message.getBytes();
+        String hash = "SHA-256";
+        byte[] hmsg = SecurityUtil.hash(hash,convert);
+        //assina com a sua chave privada sobre o valor de hash da mensagem
+        BigInteger sign_msg = (new BigInteger(hmsg)).modPow(d,N);
+        return sign_msg;
+    }
+    //verificar a assinatura da mensagem com a chave pública do outro cliente
+    public void verify_signature(BigInteger ciphermessage, BigInteger sign_msg, BigInteger pk, BigInteger n){
+        String hash = "SHA-256";
+        //verificar o hash assinado
+        byte[] hash_msg = decript_signed_Message(sign_msg, pk, n);
+        //decifrar o hash da mensagem cifrada
+        byte[] msg = decript_Message(ciphermessage).getBytes();
+        //verificar se é igual ou não
+        if(SecurityUtil.checkHash(msg, hash_msg)){
+            System.out.println("Is Equal");
+        }else{
+            System.out.println("Is NOT Equal");
+        }
+    }
+    //decifra com a chave pública do cliente (other one)
+    public byte[] decript_signed_Message(BigInteger ciphertext, BigInteger pk, BigInteger n){
+        byte[] decrpt = ciphertext.modPow(pk,n).toByteArray();
+        //return decrpt - devolve hash da mensagem assinado com a chave privada
+        return decrpt;
+    }
+    //------------------------------------------------------------------------
     //encriptação da mensagem com a chave pública do cliente (other one)
     public BigInteger encript_Message(String plain_message, BigInteger pk, BigInteger n){
         byte[] convert = plain_message.getBytes();
@@ -68,6 +99,7 @@ public class SecurityRSA implements Serializable {
         return encripted_msg;
     }
 
+    //encriptação do hash da mensagem com a chave pública do cliente (other one)
     public BigInteger encript_hashMessage(String plain_message, BigInteger pk, BigInteger n){
         byte[] convert = plain_message.getBytes();
         //determinar o hash da mensagem decifrada
@@ -79,30 +111,14 @@ public class SecurityRSA implements Serializable {
         return encripted_msg;
     }
 
-    //decifração do criptograma com a chave privada do cliente (client one)
-    public String decript_Message(BigInteger ciphertext, BigInteger sk, BigInteger n){
-        byte[] decrpt = ciphertext.modPow(sk,n).toByteArray();
+    //decifração do criptograma com a sua chave privada
+    public String decript_Message(BigInteger ciphertext){
+        byte[] decrpt = ciphertext.modPow(d,N).toByteArray();
         String decrpt_msg = new String(decrpt);
-        //return String - devolve uma String 
+        //return String - devolve uma String
         return decrpt_msg;
     }
-
-    //verificação da integridade de uma mensagem
-    public void verify_Integrity(BigInteger ciphertext, BigInteger sk, BigInteger n, String hash, BigInteger hashtext){
-        //decifrar a mensagem e converter para bytes
-        byte[] msg = decript_Message(ciphertext, sk, n).getBytes();
-        //determinar o hash da mensagem decifrada
-        byte[] h = SecurityUtil.hash(hash,msg);
-        //decifrar o hash da mensagem cifrada 
-        byte[] hash_msg = decript_Message(hashtext,sk,n).getBytes();
-        //verificar se é igual ou não
-        if(SecurityUtil.checkHash(h, hash_msg)){
-            System.out.println("Is Equal");
-        }else{
-            System.out.println("Is NOT Equal");
-        }
-
-    }
+    
 
     public BigInteger getP(){
         return p;
