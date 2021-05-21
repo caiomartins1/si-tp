@@ -50,11 +50,6 @@ public class Client_Lite {
                         byte[] sk = SecurityUtil.participateSessionKeys(outputStream, inputStream);
                         System.out.println(">Session key generated: " + SecurityUtil.byteArrayToHex(sk));
                         break;
-                    case "exit":
-                        outputStream.close();
-                        inputStream.close();
-                        socket.close();
-                        break;
                     case "rsa":
                         //demora um pouco
                         System.out.println("_____________Starting RSA key exchange_____________");
@@ -73,8 +68,11 @@ public class Client_Lite {
                         SecurityRSA factoryRSA_1 = (SecurityRSA)inputStream.readObject();
                         System.out.println("-------------------------------------------");
                         System.out.println("Public Key do outro User -> " + factoryRSA_1.getE());
-
-
+                        break;
+                    case "exit":
+                        outputStream.close();
+                        inputStream.close();
+                        socket.close();
                         break;
                     default:
                         break;
