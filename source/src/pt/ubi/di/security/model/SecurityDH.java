@@ -11,6 +11,7 @@ public class SecurityDH{
     private final BigInteger p;
     private BigInteger K;
     private DiffieHellman storeValue;
+    private final int bitLength;
 
     /**
      * <p>Constructor to participate in a Diffie-Hellman key exchange
@@ -20,9 +21,10 @@ public class SecurityDH{
      * @param p BigInteger -p value
      * @param verbose boolean - allow verbose
      */
-    public SecurityDH(BigInteger g, BigInteger p,boolean verbose) {
+    public SecurityDH(BigInteger g, BigInteger p, int bitLength,boolean verbose) {
         this.g = g;
         this.p = p;
+        this.bitLength = bitLength;
         generateValues(verbose);
     }
 
@@ -34,6 +36,7 @@ public class SecurityDH{
      * @param verbose boolean - allow verbose
      */
     public SecurityDH(int bitLength,boolean safe,boolean verbose) {
+        this.bitLength = bitLength;
         if(safe)
             p = SecurityUtil.generateSafePrime(bitLength,verbose);
         else
@@ -56,7 +59,7 @@ public class SecurityDH{
             System.out.println("X:" + X);
             System.out.println("x:" + x);
         }
-        storeValue = new DiffieHellman(p,g,X);
+        storeValue = new DiffieHellman(p,g,X,bitLength);
     }
 
     /**
@@ -65,7 +68,7 @@ public class SecurityDH{
      * @param Y BigInteger
      */
     public void generateKey(BigInteger Y) {
-        K=Y.modPow(x,p);
+        K = new BigInteger(Y.modPow(x,p).toByteArray(),0,bitLength/8);
     }
 
     public DiffieHellman getStoreValue() {
@@ -122,7 +125,7 @@ public class SecurityDH{
             System.out.println(">Starting Diffie Hellman key exchange");
             boolean verbose = inputStream.readBoolean();
             DiffieHellman generatedValues = (DiffieHellman) inputStream.readObject();
-            SecurityDH resultDH = new SecurityDH(generatedValues.getG(),generatedValues.getP(),verbose);
+            SecurityDH resultDH = new SecurityDH(generatedValues.getG(),generatedValues.getP(),generatedValues.getBitLength(),verbose);
             resultDH.generateValues(false);
             outputStream.writeObject(resultDH.getStoreValue());
             resultDH.generateKey(generatedValues.getX());
