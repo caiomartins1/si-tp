@@ -83,11 +83,14 @@ public class Client_Lite {
                         socket.close();
                         break;
                     case "rsa":
+                        //demora um pouco
                         System.out.println("_____________Starting RSA key exchange_____________");
 
                         //gera as chaves RSA do Cliente
                         SecurityRSA factoryRSA = new SecurityRSA();
+                        System.out.println(factoryRSA.getP());
                         factoryRSA.calculate_Keys();
+                        System.out.println("My Public Key: "+ factoryRSA.getE() + "\nMy Private Key: " + factoryRSA.getD());
 
                         //escreve e envia a chave pública
                         SecurityRSA publicKey = new SecurityRSA(factoryRSA.getE(),factoryRSA.getN());
@@ -95,6 +98,9 @@ public class Client_Lite {
 
                         //recebe a pk outro Cliente - usa para encriptar mensagens que enviar
                         SecurityRSA factoryRSA_1 = (SecurityRSA)inputStream.readObject();
+                        System.out.println("-------------------------------------------");
+                        System.out.println("Public Key do outro User -> " + factoryRSA_1.getE());
+
 
                         break;
                     default:

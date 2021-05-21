@@ -40,17 +40,19 @@ public class SecurityRSA implements Serializable {
         //Calcula a função phi(n) = (p - 1)*(q - 1)
         M = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
     }
-    
-    public void calculate_Keys(){
-        // 1 < "e" < phi(n) ,
-        // "e" e phi(n) sejam primos entre si.
-        //começa em 3. Se começa em 1 o "d" seria encontrado imediatamente sendo o mesmo o valor de m
-        e = new BigInteger("3");
-        while(M.gcd(e).intValue() > 1){
-            e = e.add(new BigInteger("2"));
-        }
+
+    public void calculate_Keys() {
+        e = SecurityUtil.generateNumber(M, verbose);
         //pk = (e,N)
-        
+        //verifica se phi()/M e "e" são primos entre si
+        while (M.gcd(e).intValue() > 1) {
+            e = e.add(new BigInteger("1"));
+            //se "e" == M então calcula um novo "e"
+            if(e == M){
+                e = SecurityUtil.generateNumber(M, verbose);
+                System.out.println("Big");
+            }
+        }
         //e*d = 1 mod phi(n)
         // "d" seja inverso de "e"
         d = e.modInverse(M);
@@ -128,7 +130,7 @@ public class SecurityRSA implements Serializable {
         System.out.println(
                 """
                         RSA Commands =====================================================
-                        -l -length --length \033[3mlengthBit\033[0m, length of the prime, default 1024
+                        -l -length --length \033[3mlengthBit\033[0m, length of the prime, default 16
                         -v -verbose --verbose, shows verbose
                         =================================================================================
                         """
