@@ -121,9 +121,9 @@ public class Server_Lite {
                                             -dh, Diffie-Hellman Key-agreement protocol
                                             -mkp, Merkle Puzzle Key-agreement protocol
                                             -sk, share a session key by using a KAP
-                                            -rsa, share messages using RSA - public and secret key
-                                            -message, send encrypted message between each other
                                             -ck, use hmac to verify if the shared secret key is the same
+                                            -message, send encrypted message between each other
+                                            -rsa, share messages using RSA - public and secret key
                                             Type -\033[3moption\033[0m help -help --help -h --h, for more information regarding each option
                                             ============================================================================
                                             """

@@ -243,7 +243,7 @@ public class SecurityMP implements Serializable {
         if (key.length - bytesToGuess >= 0)
             System.arraycopy(key, bytesToGuess, keyShorted, 0, key.length - bytesToGuess);
         byte[] message = createMessage(secretSize);
-        byte[] cipher = SecurityUtil.oneTimePadEncrypt(message,key,message.length);
+        byte[] cipher = SecurityUtil.oneTimePadEncrypt(message,key);
         byte[] puzzle = new byte[cipher.length+keyShorted.length];
         System.arraycopy(cipher,0,puzzle,0,cipher.length);
         System.arraycopy(keyShorted,0,puzzle,cipher.length,keyShorted.length);
@@ -337,7 +337,7 @@ public class SecurityMP implements Serializable {
 
             partKey[dept]=(byte) i;//try to replicate key
 
-            byte[] message = SecurityUtil.oneTimePadEncrypt(cipher,partKey,puzzle.getSizeCipherMessage());//try to decipher the cipher
+            byte[] message = SecurityUtil.oneTimePadEncrypt(cipher,partKey);//try to decipher the cipher
 
             byte[] messageDigestExpected = new byte[HASH_SIZE];//get the hash in the message
             System.arraycopy(message,message.length-HASH_SIZE,messageDigestExpected,0,messageDigestExpected.length);
@@ -374,8 +374,8 @@ public class SecurityMP implements Serializable {
         if(verbose)
             System.out.println("Encrypting index...");
         byte[] indexOfSecretKeyByte = SecurityUtil.intToByte(indexOfSecretKey);
-        byte[] indexEncrypted = SecurityUtil.oneTimePadEncrypt(indexOfSecretKeyByte,chosenSecretKey,indexOfSecretKeyByte.length);
-        byte[] indexHashEncrypted = SecurityUtil.oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),chosenSecretKey,HASH_SIZE);
+        byte[] indexEncrypted = SecurityUtil.oneTimePadEncrypt(indexOfSecretKeyByte,chosenSecretKey);
+        byte[] indexHashEncrypted = SecurityUtil.oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),chosenSecretKey);
         finalSolvedPuzzle = new MerklePuzzle(indexEncrypted,indexHashEncrypted);
         if(verbose)
             System.out.println(finalSolvedPuzzle.toStringSolved());
@@ -389,8 +389,8 @@ public class SecurityMP implements Serializable {
         if(verbose)
             System.out.println("Encrypting index...");
         byte[] indexOfSecretKeyByte = SecurityUtil.intToByte(indexOfSecretKey);
-        byte[] indexEncrypted = SecurityUtil.oneTimePadEncrypt(indexOfSecretKeyByte,chosenSecretKey,indexOfSecretKeyByte.length);
-        byte[] indexHashEncrypted = SecurityUtil.oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),chosenSecretKey,HASH_SIZE);
+        byte[] indexEncrypted = SecurityUtil.oneTimePadEncrypt(indexOfSecretKeyByte,chosenSecretKey);
+        byte[] indexHashEncrypted = SecurityUtil.oneTimePadEncrypt(SecurityUtil.hash("SHA1",indexOfSecretKeyByte),chosenSecretKey);
         finalSolvedPuzzle = new MerklePuzzle(indexEncrypted,indexHashEncrypted);
         if(verbose)
             System.out.println(finalSolvedPuzzle.toStringSolved());
@@ -408,8 +408,8 @@ public class SecurityMP implements Serializable {
         byte[] indexEncryptedTemp = puzzle.getIndexEncrypted();
         byte[] indexHashEncryptedTemp = puzzle.getIndexHashEncrypted();
         for(byte[] k : secretKeys) {
-            byte[] index = SecurityUtil.oneTimePadEncrypt(indexEncryptedTemp,k,indexEncryptedTemp.length);
-            byte[] indexHashExpected = SecurityUtil.oneTimePadEncrypt(indexHashEncryptedTemp,k,HASH_SIZE);
+            byte[] index = SecurityUtil.oneTimePadEncrypt(indexEncryptedTemp,k);
+            byte[] indexHashExpected = SecurityUtil.oneTimePadEncrypt(indexHashEncryptedTemp,k);
             byte[] indexHash = SecurityUtil.hash("SHA1",index);
             if(SecurityUtil.checkHash(indexHash,indexHashExpected)) {
                 if(verbose) {

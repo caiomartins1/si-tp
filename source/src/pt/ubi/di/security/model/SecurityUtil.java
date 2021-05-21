@@ -299,6 +299,15 @@ public class SecurityUtil {
     //-----------------------------------------------Encryption Functions-----------------------------------------------
 
     /**
+     * Check if a byte array key is valid for use with AES-CBC (16/24/32 Bytes)
+     * @param key byte[] - key to check size
+     * @return true if key is okay to use else false
+     */
+    private static boolean checkKeyAES(byte[] key) {
+        return key.length == 16 || key.length == 24 || key.length == 32;
+    }
+
+    /**
      * Function to encrypt a message.
      * Uses AES-CBC
      * iv is a 16 byte array that is appended at the start of the cipher
@@ -307,7 +316,7 @@ public class SecurityUtil {
      * @return byte[] -  encrypted message, return empty array if unable to cipher
      */
     public static byte[] encryptSecurity(byte[] message,byte[] key) {
-        if(!(key.length ==16 || key.length ==24 || key.length ==32)){
+        if(!checkKeyAES(key)){
             System.out.println("(ENCRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
             return new  byte[0];
         }
@@ -345,8 +354,8 @@ public class SecurityUtil {
      * @return byte[] -  decrypted cipher, return empty array if unable to decipher
      */
     public static byte[] decipherSecurity(byte[] finalCipher,byte[] key) {
-        if(!(key.length ==16 || key.length ==24 || key.length ==32)){
-            System.out.println("(DECRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
+        if(!checkKeyAES(key)){
+            System.out.println("(ENCRYPTION) -> Key length not valid, needs to be 16,24 or 32 Bytes.\nKey length: "+ key.length);
             return new  byte[0];
         }
         else if(finalCipher == null) {
@@ -397,11 +406,10 @@ public class SecurityUtil {
      * One time pad encryption by doing --> message XOR key
      * @param message byte[] - message to encrypt/decipher
      * @param key byte[] - array of bytes to be used to generate noise
-     * @param sizeBytes int - size in bytes of the noise
      * @return byte[] of encrypted/decrypted message
      */
-    public static byte[] oneTimePadEncrypt(byte[] message, byte[] key, int sizeBytes) {
-        byte[] noise = createNoise(key,sizeBytes);
+    public static byte[] oneTimePadEncrypt(byte[] message, byte[] key) {
+        byte[] noise = createNoise(key,message.length);
         if (message.length != noise.length) {
             System.out.println("OneTimePadEncrypt -> Error Key not same size as message");
             return new byte[0];
@@ -580,7 +588,12 @@ public class SecurityUtil {
      * @param options String[] - array of options
      */
     public static void sendMessage(ObjectOutputStream outputStream, ObjectInputStream inputStream,String message,byte[] key, String[] options) {
-        byte[] cipher = encryptSecurity(message.getBytes(),key);
+        byte[] cipher;
+        if(checkKeyAES(key))
+            cipher = encryptSecurity(message.getBytes(),key);
+        else {
+            cipher = oneTimePadEncrypt(message.getBytes(),key);
+        }
         try {
             outputStream.writeObject(cipher);
         } catch (Exception e) {
@@ -599,9 +612,14 @@ public class SecurityUtil {
      */
     public static String receiveMessage(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
         try {
-            byte[] cipher =(byte[]) inputStream.readObject();
-            byte[] message = decipherSecurity(cipher,key);
-            System.out.println(">Message received.");
+            byte[] cipher = (byte[]) inputStream.readObject();
+            byte[] message;
+            if(checkKeyAES(key))
+                message = decipherSecurity(cipher,key);
+            else {
+                message = oneTimePadEncrypt(cipher,key);
+            }
+            System.out.print(">Message received: ");
             return byteArrayToString(message);
 
         } catch (Exception e) {
