@@ -103,12 +103,18 @@ public class SecurityMP implements Serializable {
         this.puzzles = new ArrayList<>();
         this.secretKeys = new ArrayList<>();
 
-        for(int i=1;i<=N;++i) { ids.add(i); }
+        for(int i=1;i<=this.N;++i) { ids.add(i); }
         if(verbose)
             System.out.println("Creating puzzles.....");
-        for(int i=0;i<N;++i) {
-            if(verbose)
-                System.out.print("*");
+        int count = 0;
+        for(int i=0;i<this.N;++i) {
+            if(verbose) {
+                if( count%100 == 0 && i!=0)
+                    System.out.print("*");
+                if( count%10000 == 0 && i!=0)
+                    System.out.print("\n");
+                count++;
+            }
             puzzles.add(CreatePuzzle(this.secretSize,this.keySize,this.bytesToGuess));
         }
         if(verbose)
@@ -154,17 +160,38 @@ public class SecurityMP implements Serializable {
             boolean verbose = false;
 
             int index = SecurityUtil.lookOptions(options,new String[]{"-n"});
-            if (index!=-1)
-                N = Integer.parseInt(options[index+1]);
+            if (index!=-1) {
+                try {
+                    N = Integer.parseInt(options[index + 1]);
+                } catch (Exception e) {
+                    System.out.println("Error: "+e.getMessage() + " 10000 being used as default.");
+                }
+            }
+
             index = SecurityUtil.lookOptions(options,new String[]{"-lK","-lengthK","--lengthK"});
-            if(index!=-1)
-                secretSizeBytes = Integer.parseInt(options[index+1]);
+            if(index!=-1) {
+                try {
+                    secretSizeBytes = Integer.parseInt(options[index + 1]);
+                } catch (Exception e) {
+                    System.out.println("Error: "+e.getMessage() + " 32 being used as default.");
+                }
+            }
             index = SecurityUtil.lookOptions(options,new String[]{"-lk","-lengthk","--lengthk"});
-            if(index!=-1)
-                keySizeBytes = Integer.parseInt(options[index+1]);
+            if(index!=-1) {
+                try {
+                    keySizeBytes = Integer.parseInt(options[index + 1]);
+                } catch (Exception e) {
+                    System.out.println("Error: "+e.getMessage() + " 16 being used as default.");
+                }
+            }
             index = SecurityUtil.lookOptions(options,new String[]{"-d","-difficulty","--difficulty"});
-            if(index!=-1)
-                bytesToGuess = Integer.parseInt(options[index+1]);
+            if(index!=-1) {
+                try {
+                    bytesToGuess = Integer.parseInt(options[index + 1]);
+                } catch (Exception e) {
+                    System.out.println("Error: "+e.getMessage() + " 2 being used as default.");
+                }
+            }
             index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
             if(index!=-1)
                 verbose = true;
@@ -293,12 +320,21 @@ public class SecurityMP implements Serializable {
      * @param partKey byte[] - byte array of the partial key "fill" the blanks with possible values
      */
     private void solvePuzzleAux(MerklePuzzle puzzle, byte[] cipher, int dept, byte[] partKey, boolean verbose) {
+        int count = 0;
         if(dept<0 || flag) {
             return;
         }
         for(int i =-128;i<128;i++) {
-            if(verbose)
-                System.out.print(".");
+            if(verbose) {
+                if( count % 5 == 0) {
+                    System.out.print(".");
+                }
+                if( i == 127) {
+                    System.out.print("\n");
+                }
+                count++;
+            }
+
             partKey[dept]=(byte) i;//try to replicate key
 
             byte[] message = SecurityUtil.oneTimePadEncrypt(cipher,partKey,puzzle.getSizeCipherMessage());//try to decipher the cipher
@@ -326,8 +362,6 @@ public class SecurityMP implements Serializable {
             }
             if(flag)
                 return;
-            if(verbose)
-                System.out.print("*");
             solvePuzzleAux(puzzle,cipher,dept-1,partKey,verbose);
         }
     }
@@ -410,7 +444,7 @@ public class SecurityMP implements Serializable {
         System.out.println(
                 """
                         Merkle Puzzles KAP Commands =====================================================================================
-                        -n \033[3mlengthByte\033[0m, amount of puzzles - default 10000
+                        -n \033[3mnumber\033[0m, amount of puzzles - default 10000
                         -lK -lengthK --lengthK \033[3mlengthByte\033[0m, length in bytes of the secret key - default 32
                         -lk -lengthk --lengthk \033[3mlengthByte\033[0m, length in bytes of (puzzle) encryption key - default 16
                         -d -difficulty --difficulty \033[3mamountOfBytes\033[0m, amount of bytes to remove from encryption key (the higher the longer) - default 2

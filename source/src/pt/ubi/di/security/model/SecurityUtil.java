@@ -45,6 +45,7 @@ public class SecurityUtil {
      */
     public static BigInteger generateSafePrime(int bitLength, boolean verbose) {
         boolean flag;
+        int count = 0;
         do {
             if (verbose)
                 System.out.print(".");
@@ -52,11 +53,16 @@ public class SecurityUtil {
             if (verbose)
                 System.out.print("*");
             flag = checkIfSafePrime(prime, 1,false);
-            if (verbose)
+            if (verbose) {
                 System.out.print("+");
+                count++;
+            }
             if (flag) {
+                System.out.print("\n");
                 return prime;
             }
+            if(count % 50 == 0)
+                System.out.print("\n");
         } while (true);
     }
 
@@ -88,7 +94,7 @@ public class SecurityUtil {
         for (int i=0;i<byteSize;i++) {
             byte[] tmp = new byte[1];
             secureRandomGenerator.nextBytes(tmp);
-            if ((int)tmp[0]<0) {
+            if ((int)tmp[0]<0) { // if the number is negative turn it positive
                 tmp[0] += 128;
             }
             bytesArray[i]=tmp[0];
@@ -408,14 +414,14 @@ public class SecurityUtil {
     }
 
 
-    public static byte[] hmac(byte[] key) {
-        byte[] msd = hash("SHA256", key);
+    public static byte[] hmac(byte[] message,byte[] key) {
+        byte[] msd = hash("SHA3-512", message);
         return  encryptSecurity(msd, key);
     }
 
-    public static boolean hmacCheck(byte[] hmac, byte[] key) {
+    public static boolean hmacCheck(byte[] hmac,byte[] message, byte[] key) {
         byte[] msg = decipherSecurity(hmac, key);
-        byte[] msd = hash("SHA256", key);
+        byte[] msd = hash("SHA3-512", message);
         return checkHash(msg, msd);
     }
 
@@ -449,10 +455,10 @@ public class SecurityUtil {
     private static final int KAP_DH = 0;
     private static final int KAP_MP = 1;
     private static final int KAP_RSA = 2;
+    private static final int FAIL = -1;
+    private static final int OK = 0;
 
     /**
-     * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
-     *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @param sessionKey byte[] - session key wished to be shared
@@ -460,12 +466,13 @@ public class SecurityUtil {
      */
     public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options, byte[] sessionKey) {
         int KAP =KAP_DH;
+        boolean hmacStatus = false;
         int index = SecurityUtil.lookOptions(options,new String[]{"-mkp"});
         if(index != -1) {
             System.out.println(">Starting Session Key distribution using Merkle Puzzle");
             KAP =KAP_MP;
         }
-        index = SecurityUtil.lookOptions(options,new String[]{"-resa"});
+        index = SecurityUtil.lookOptions(options,new String[]{"-rsa"});
         if(index != -1) {
             System.out.println(">Starting Session Key distribution using RSA");
             KAP =KAP_RSA;
@@ -473,21 +480,18 @@ public class SecurityUtil {
         if(KAP==KAP_DH) {
             System.out.println(">Starting Session Key distribution using Diffie-Hellman");
         }
+        index = SecurityUtil.lookOptions(options,new String[]{"-hmac"});
+        if (index!=-1)
+            hmacStatus = true;
         try {
             outputStream.writeInt(KAP);
+            outputStream.writeObject(hmacStatus);
         } catch (Exception e) {
             System.out.println("Error sending KAP: "+ e.getMessage());
         }
-        boolean verbose = false;//TODO
-        boolean mac = false;
-        index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
-        if(index!=-1)
-            verbose = true;
-        index = SecurityUtil.lookOptions(options,new String[]{"-mac"});
-        if(index!=-1)
-            mac = true;
 
         byte[] cipherKey = new byte[32];
+        byte[] hmac = new byte[512/8];
 
         if(KAP == KAP_DH) {
             cipherKey =  SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
@@ -495,44 +499,74 @@ public class SecurityUtil {
         else if(KAP == KAP_MP) {
             cipherKey = SecurityMP.startExchange(outputStream, inputStream,new String[]{"-l","32"});
         }
+        else if(KAP == KAP_RSA) {
+        }
+
         if(cipherKey.length == 0) {
-            System.out.println("Error with cipher key");//TODO
+            System.out.println("Error with cipher key.");
             return new byte[0];
         }
+
         byte[] cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+
+        if(hmacStatus)
+            hmac = SecurityUtil.hmac(cipher,cipherKey);
         try {
             outputStream.writeObject(cipher);
+            if(hmacStatus) {
+                System.out.println(">Using hmac.");
+                outputStream.writeObject(hmac);
+            }
         } catch (Exception e) {
             System.out.println("Error sending cipher: "+ e.getMessage());
         }
-        return SecurityUtil.decipherSecurity(cipher, cipherKey);
+        try {
+            int messageIntegrity =(int) inputStream.readObject();
+            if(messageIntegrity == OK)
+                return SecurityUtil.decipherSecurity(cipher, cipherKey);
+            else if(messageIntegrity == FAIL){
+                System.out.println(">HMAC invalid, message integrity not confirmed.");
+                return new byte[0];
+            }
+        } catch (Exception e) {
+            System.out.println("Error sending status: "+ e.getMessage());
+        }
+        return new byte[0];
     }
 
     /**
-     * -sk [-l value] [-dh -mp -rsa] [-mac] [-v]
-     *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @return byte[] - returns the key in byte array format
      */
     public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
-        int lengthByte = 512;
+        int lengthByte = 64;
         int index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
-        if (index!=-1)
-            lengthByte = Integer.parseInt(options[index+1]);
+        if (index!=-1) {
+            try {
+                lengthByte = Integer.parseInt(options[index + 1]);
+                if(lengthByte<=0)
+                    lengthByte = 64;
+            } catch (Exception e) {
+                System.out.println("Error on length: " + e.getMessage() + " 64 being used as default.");
+            }
+        }
         return shareSessionKeys(outputStream,inputStream,options,SecurityUtil.generateNumber(lengthByte));
     }
 
     /**
-     *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @return byte[] - returns the key in byte array format
      */
     public static byte[] participateSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
         int KAP = KAP_DH;
+        boolean hmacStatus = false;
+        boolean hmacCheck = true;
         try {
             KAP = inputStream.readInt();
+            hmacStatus =(boolean) inputStream.readObject();
+
         } catch (Exception e) {
             System.out.println("Error receiving KAP: "+ e.getMessage());
         }
@@ -546,16 +580,40 @@ public class SecurityUtil {
         byte[] cipher = new byte[0];
         try {
             cipher = (byte[]) inputStream.readObject();
+            if(hmacStatus) {
+                System.out.println(">Using hmac.");
+                byte[] hmac =(byte[]) inputStream.readObject();
+                hmacCheck = hmacCheck(hmac,cipher,cipherKey);
+            }
         } catch (Exception e) {
             System.out.println("Error receiving cipher: "+ e.getMessage());
         }
-        return SecurityUtil.decipherSecurity(cipher, cipherKey);
+        try {
+            if(hmacCheck) {
+                outputStream.writeObject(OK);
+                return SecurityUtil.decipherSecurity(cipher, cipherKey);
+            }
+            else {
+                System.out.println(">HMAC invalid, message integrity not confirmed.");
+                outputStream.writeObject(FAIL);
+                return new byte[0];
+            }
+        } catch (Exception e) {
+            System.out.println("Error sending status: "+ e.getMessage());
+        }
+        return new byte[0];
     }
 
-    /**
-     * TODO
-     */
     public static void shareSessionHelp() {
-
+        System.out.println(
+                """
+                        Session Key sharing Commands =====================================================================================
+                        -l -length --length \033[3mlengthByte\033[0m, length of the key to share (byte), default is 64
+                        -dh -mkp -rsa, algorithm to use for key pre-distribution
+                        -hmac, use hmac to verify integrity of session key exchange
+                        -v -verbose --verbose, shows verbose
+                        ==================================================================================================================
+                        """
+        );
     }
 }
