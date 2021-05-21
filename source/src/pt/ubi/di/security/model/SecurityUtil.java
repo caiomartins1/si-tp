@@ -295,7 +295,7 @@ public class SecurityUtil {
         return new BigInteger(number).intValue();
     }
 
-    //-------------------------------------------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------------------
     //-----------------------------------------------Encryption Functions-----------------------------------------------
 
     /**
@@ -413,44 +413,18 @@ public class SecurityUtil {
         return cipherBytes;
     }
 
-
-    public static byte[] hmac(byte[] message,byte[] key) {
-        byte[] msd = hash("SHA3-512", message);
-        return  encryptSecurity(msd, key);
-    }
-
-    public static boolean hmacCheck(byte[] hmac,byte[] message, byte[] key) {
-        byte[] msg = decipherSecurity(hmac, key);
-        byte[] msd = hash("SHA3-512", message);
-        return checkHash(msg, msd);
-    }
-
     /**
      * Function to initialize an byte array to be used as iv for AES encryption
      * array size = 16Bytes
      * @return IvParameterSpec - returns the iv in the required state
      */
-    public static IvParameterSpec generateIv() {
+    private static IvParameterSpec generateIv() {
         byte[] iv = new byte[BOCK_SIZE];
         secureRandomGenerator.nextBytes(iv);
         return new IvParameterSpec(iv);
     }
 
-    /**
-     * This function returns the index (position) on the String array where any word from the words array was found
-     * @param options String[] - array where to look for words
-     * @param words String[] - array of the words to look for
-     * @return int - index of the position where the word was found, returns -1 if no word was found
-     */
-    public static int lookOptions(String[] options,String[] words) {
-        for(int i=0;i<options.length;i++) {
-            for(String word : words) {
-                if(options[i].equals(word))
-                    return i;
-            }
-        }
-        return -1;
-    }
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     private static final int KAP_DH = 0;
     private static final int KAP_MP = 1;
@@ -471,11 +445,6 @@ public class SecurityUtil {
         if(index != -1) {
             System.out.println(">Starting Session Key distribution using Merkle Puzzle");
             KAP =KAP_MP;
-        }
-        index = SecurityUtil.lookOptions(options,new String[]{"-rsa"});
-        if(index != -1) {
-            System.out.println(">Starting Session Key distribution using RSA");
-            KAP =KAP_RSA;
         }
         if(KAP==KAP_DH) {
             System.out.println(">Starting Session Key distribution using Diffie-Hellman");
@@ -498,8 +467,6 @@ public class SecurityUtil {
         }
         else if(KAP == KAP_MP) {
             cipherKey = SecurityMP.startExchange(outputStream, inputStream,new String[]{"-l","32"});
-        }
-        else if(KAP == KAP_RSA) {
         }
 
         if(cipherKey.length == 0) {
@@ -604,12 +571,112 @@ public class SecurityUtil {
         return new byte[0];
     }
 
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param message String - the clean message desired to be encrypted and sent
+     * @param key byte[] - the key in byte array format
+     * @param options String[] - array of options
+     */
+    public static void sendMessage(ObjectOutputStream outputStream, ObjectInputStream inputStream,String message,byte[] key, String[] options) {
+        byte[] cipher = encryptSecurity(message.getBytes(),key);
+        try {
+            outputStream.writeObject(cipher);
+        } catch (Exception e) {
+            System.out.println("Error sending message: "+ e.getMessage());
+        }
+        System.out.println(">Message sent.");
+    }
+
+    /**
+     * Receive incrypted text message and decrypt them sending the clean text.
+     * Uses AES-CBC
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param key byte[] - the key in byte array format
+     * @return String - returns the clean message in String format
+     */
+    public static String receiveMessage(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
+        try {
+            byte[] cipher =(byte[]) inputStream.readObject();
+            byte[] message = decipherSecurity(cipher,key);
+            System.out.println(">Message received.");
+            return byteArrayToString(message);
+
+        } catch (Exception e) {
+            System.out.println("Error receiving message: "+ e.getMessage());
+        }
+        return "";
+    }
+
+    public static void checkSharedKey(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
+        byte[] ephemeralKey = SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
+        try {
+            outputStream.writeObject(hmac(key,ephemeralKey));
+            int v = (int) inputStream.readObject();
+            if(v == OK) {
+                System.out.println(">Key is the same.");
+            }
+            else if(v == FAIL){
+                System.out.println(">Key is not the same recommend changing it.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error sending message: "+ e.getMessage());
+        }
+    }
+
+    public static void checkSharedKey2(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
+        byte[] ephemeralKey = SecurityDH.receiveExchange(outputStream,inputStream);
+        try {
+            byte[] hmac = (byte[]) inputStream.readObject();
+            if(hmacCheck(hmac,key,ephemeralKey)) {
+                System.out.println(">Key is the same.");
+                outputStream.writeObject(OK);
+            }
+            else {
+                System.out.println(">Key is not the same recommend changing it.");
+                outputStream.writeObject(FAIL);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error sending message: "+ e.getMessage());
+        }
+    }
+
+    public static byte[] hmac(byte[] message,byte[] key) {
+        byte[] msd = hash("SHA3-512", message);
+        return  encryptSecurity(msd, key);
+    }
+
+    public static boolean hmacCheck(byte[] hmac,byte[] message, byte[] key) {
+        byte[] msg = decipherSecurity(hmac, key);
+        byte[] msd = hash("SHA3-512", message);
+        return checkHash(msg, msd);
+    }
+
+    /**
+     * This function returns the index (position) on the String array where any word from the words array was found
+     * @param options String[] - array where to look for words
+     * @param words String[] - array of the words to look for
+     * @return int - index of the position where the word was found, returns -1 if no word was found
+     */
+    public static int lookOptions(String[] options,String[] words) {
+        for(int i=0;i<options.length;i++) {
+            for(String word : words) {
+                if(options[i].equals(word))
+                    return i;
+            }
+        }
+        return -1;
+    }
+
     public static void shareSessionHelp() {
         System.out.println(
                 """
                         Session Key sharing Commands =====================================================================================
                         -l -length --length \033[3mlengthByte\033[0m, length of the key to share (byte), default is 64
-                        -dh -mkp -rsa, algorithm to use for key pre-distribution
+                        -dh -mkp, algorithm to use for key pre-distribution
                         -hmac, use hmac to verify integrity of session key exchange
                         -v -verbose --verbose, shows verbose
                         ==================================================================================================================
