@@ -22,6 +22,8 @@ public class Client {
     private ObjectOutputStream outputStream;
     private boolean working = true;
 
+    byte[] sessionKey;
+
     //TODO: just to test
     public Client() {
         this.ip = "127.0.0.1";
@@ -79,14 +81,16 @@ public class Client {
                         break;
                     case "-connect":
                         int index = SecurityUtil.lookOptions(ans,new String[]{"-sk","-sessionKey","--sessionKey"});
-                        if(index != -1)
-                        {
-                            byte[] key = SecurityUtil.shareSessionKeys(outputStream,inputStream,new String[]{});
-                            System.out.println(">Session key sent to server: " + SecurityUtil.byteArrayToHex(key));
+                        if(index != -1) {
+                            sessionKey = SecurityUtil.shareSessionKeys(outputStream,inputStream,new String[]{});
+                            System.out.println(">Session key sent to server: " + SecurityUtil.byteArrayToHex(sessionKey));
                         }
                         System.out.println(inputStream.readObject());
-                        index = SecurityUtil.lookOptions(ans,new String[]{"-start"});
-                        if(index != -1) {
+                        int index2 = SecurityUtil.lookOptions(ans,new String[]{"-start"});
+                        if(index2 != -1 && index != -1) {
+                            Server_Lite sl = new Server_Lite(2222,sessionKey);
+                        }
+                        else if(index2 != -1) {
                             Server_Lite sl = new Server_Lite(2222);
                         }
                         break;
@@ -150,15 +154,21 @@ public class Client {
                 String a = Validations.readString();
                 if (a.equals("Y")) {
                     if (item.getConnectionName().equals(connectionName)) {
-                        System.out.println("Server on!");
-                        Server_Lite sl = new Server_Lite(item.getPort());
+                        if(useSK) {
+                            Server_Lite sl = new Server_Lite(item.getPort(),sessionKey);
+                        }
+                        else {
+                            Server_Lite sl = new Server_Lite(item.getPort());
+                        }
                     } else {
                         if(useSK) {
-                            byte[] sessionKey = SecurityUtil.participateSessionKeys(outputStream,inputStream);
+                            sessionKey = SecurityUtil.participateSessionKeys(outputStream,inputStream);
                             System.out.println(">Session Key received: " + SecurityUtil.byteArrayToHex(sessionKey));
+                            Client_Lite cl = new Client_Lite(item.getIP(), item.getPort(),sessionKey);
                         }
-                        System.out.println("Client on!");
-                        Client_Lite cl = new Client_Lite(item.getIP(), item.getPort());
+                        else {
+                            Client_Lite cl = new Client_Lite(item.getIP(), item.getPort());
+                        }
                     }
                 }
             }

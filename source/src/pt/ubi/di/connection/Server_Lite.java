@@ -23,18 +23,22 @@ public class Server_Lite {
     private ObjectInputStream inputStream;
     private byte[] secretKey = null;
 
+    public Server_Lite(int port) {
+        this(port,null);
+    }
+
     /**
      * Constructor to create a serve_lite,
      * responsible to create a new connection private between a server_lite and a client_lite
      * @param port the port of the connection
      */
-    public Server_Lite(int port) {
+    public Server_Lite(int port, byte[] key) {
+        this.secretKey = key;
         try {
             serverSocket = new ServerSocket(port);
-            System.out.println("Another server created!");
             socket = serverSocket.accept();
             try {
-                System.out.println("Socket accepted");
+                System.out.println("Server created!");
                 int index = -1;
                 outputStream = new ObjectOutputStream(socket.getOutputStream());
                 inputStream = new ObjectInputStream(socket.getInputStream());
@@ -74,6 +78,7 @@ public class Server_Lite {
                             break;
                         case "-ck":
                             outputStream.writeObject("ck");
+                            System.out.println(">Starting key check...");
                             if(secretKey == null) {
                                 System.out.println("No secret key configured.");
                             }
@@ -81,8 +86,8 @@ public class Server_Lite {
                                 SecurityUtil.checkSharedKey(outputStream,inputStream,secretKey);
                             break;
                         case "-message":
-                                outputStream.writeObject("message");
-                                communicate();
+                            outputStream.writeObject("message");
+                            communicate();
                             break;
                         case "-rsa":
                             index = SecurityUtil.lookOptions(options, new String[]{"help","-help","--help","-h","--h"});
@@ -124,7 +129,7 @@ public class Server_Lite {
                                             """
                             );
                             break;
-                        case "exit":
+                        case "-exit":
                             outputStream.writeObject("exit");
                             outputStream.close();
                             inputStream.close();

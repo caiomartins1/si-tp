@@ -16,6 +16,9 @@ public class Client_Lite {
     private ObjectOutputStream outputStream;
     private byte[] secretKey;
 
+    public Client_Lite(String ip, int port) {
+        this(ip,port,null);
+    }
 
     /**
      * Constructor to create a new client_lite,
@@ -23,9 +26,10 @@ public class Client_Lite {
      * @param ip of the serve_lite
      * @param port of the connection
      */
-    public Client_Lite(String ip, int port) {
+    public Client_Lite(String ip, int port, byte[] key) {
         this.ip = ip;
         this.port = port;
+        this.secretKey = key;
 
         try {
             socket = new Socket(ip, port);
@@ -49,15 +53,16 @@ public class Client_Lite {
                         secretKey = SecurityUtil.participateSessionKeys(outputStream, inputStream);
                         System.out.println(">Session key generated: " + SecurityUtil.byteArrayToHex(secretKey));
                         break;
-                    case "message":
-                            communicate();
-                        break;
-                        case "ck":
-                            if(secretKey == null) {
+                    case "ck":
+                        System.out.println(">Starting key check...");
+                        if(secretKey == null) {
                                 System.out.println("No key secret configured.");
                             }
                             else
                                 SecurityUtil.checkSharedKey2(outputStream,inputStream,secretKey);
+                        break;
+                    case "message":
+                        communicate();
                         break;
                     case "rsa":
                         //demora um pouco
