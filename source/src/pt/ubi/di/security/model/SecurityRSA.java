@@ -118,7 +118,7 @@ public class SecurityRSA implements Serializable {
         //return String - devolve uma String
         return decrpt_msg;
     }
-    
+
 
     public BigInteger getP(){
         return p;
@@ -146,7 +146,7 @@ public class SecurityRSA implements Serializable {
         System.out.println(
                 """
                         RSA Commands =====================================================
-                        -l -length --length \033[3mlengthBit\033[0m, length of the prime, default 16
+                        -l -length --length \033[3mlengthBit\033[0m, length of the prime, default 1024
                         -v -verbose --verbose, shows verbose
                         =================================================================================
                         """
