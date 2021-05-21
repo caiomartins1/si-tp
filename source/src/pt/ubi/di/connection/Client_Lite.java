@@ -49,38 +49,6 @@ public class Client_Lite {
                     case "sk":
                         byte[] sk = SecurityUtil.participateSessionKeys(outputStream, inputStream);
                         System.out.println(">Session key generated: " + SecurityUtil.byteArrayToHex(sk));
-                        //DH implementation
-                        /*byte[] cipherKey =  SecurityDH.receiveExchange(outputStream,inputStream).toByteArray();
-                        byte[] cipher = (byte[]) inputStream.readObject();
-                        byte[] sessionKey = SecurityUtil.decipherSecurity(cipher,cipherKey);
-                        System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));*/
-
-                        //MKP implementation
-                        /*System.out.println("Entrei Sk");
-                        byte[] cipherKey = SecurityMP.receiveExchange(outputStream, inputStream);
-                        byte[] cipher = (byte[]) inputStream.readObject();
-                        System.out.println("cipherO: "+Arrays.toString(cipher) + " SIZE: " + cipher.length);
-                        System.out.println("cipherS: "+SecurityUtil.byteArrayToString(cipher));
-                        cipher[1] =(byte) 0;
-                        System.out.println("cipherA: "+ Arrays.toString(cipher) + " SIZE: " + cipher.length);
-                        System.out.println("cipherS: "+SecurityUtil.byteArrayToString(cipher));
-                        byte[] hmac = (byte[]) inputStream.readObject();
-                        byte[] sessionKey = SecurityUtil.decipherSecurity(cipher, cipherKey);
-                        System.out.println("cipher4: "+SecurityUtil.byteArrayToHex(sessionKey) + " SIZE: " + sessionKey.length);
-                        System.out.println("cipherS: "+SecurityUtil.byteArrayToString(sessionKey));
-                        if (!SecurityUtil.hmacCheck(hmac, sessionKey)) {
-                            System.out.println("UIUI");
-                        } else {
-                            System.out.println("SESSION KEY: "+SecurityUtil.byteArrayToHex(sessionKey));
-                        }*/
-
-
-
-                        break;
-                    case "exit":
-                        outputStream.close();
-                        inputStream.close();
-                        socket.close();
                         break;
                     case "rsa":
                         //demora um pouco
@@ -100,8 +68,11 @@ public class Client_Lite {
                         SecurityRSA factoryRSA_1 = (SecurityRSA)inputStream.readObject();
                         System.out.println("-------------------------------------------");
                         System.out.println("Public Key do outro User -> " + factoryRSA_1.getE());
-
-
+                        break;
+                    case "exit":
+                        outputStream.close();
+                        inputStream.close();
+                        socket.close();
                         break;
                     default:
                         break;
