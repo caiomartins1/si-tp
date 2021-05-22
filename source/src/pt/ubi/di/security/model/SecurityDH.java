@@ -93,8 +93,14 @@ public class SecurityDH{
             boolean verbose = false;
             boolean safe = false;
             int index = SecurityUtil.lookOptions(options, new String[]{"-l","-length","--length"});
-            if (index!=-1)
-                lengthBit = Integer.parseInt(options[index+1]);
+            if (index!=-1) {
+                try {
+                    lengthBit = Integer.parseInt(options[index + 1]);
+                }
+                catch (Exception e){
+                    System.out.println("Error: "+e.getMessage() + " 1024 being used as default.");
+                }
+            }
             index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
             if(index!=-1)
                 verbose = true;

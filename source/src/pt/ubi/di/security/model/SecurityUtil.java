@@ -14,6 +14,7 @@ import java.util.Random;
 /**
  * Class for utilities to be used along the program.
  * Provides encryption methods, number generators and others ....
+ * @author Vitor Neto
  */
 public class SecurityUtil {
 
