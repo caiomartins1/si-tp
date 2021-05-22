@@ -382,14 +382,6 @@ public class SecurityUtil {
         return new byte[0];
     }
 
-    /**
-     * Function to decipher a cipher.
-     * Uses AES-CBC to decipher
-     * iv is a 16 byte array that is kept at the start of the cipher
-     * @param finalCipher byte[] - cipher in byte array format
-     * @param key byte[] - byte array key
-     * @return byte[] -  decrypted cipher, return empty array if unable to decipher
-     */
     public static byte[] decipherSecurity2(byte[] finalCipher,byte[] key) {
         if(!checkKeyAES(key)){
             return new  byte[0];
