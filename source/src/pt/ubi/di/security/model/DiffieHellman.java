@@ -3,6 +3,9 @@ package pt.ubi.di.security.model;
 import java.io.Serializable;
 import java.math.BigInteger;
 
+/**
+ * @author Vitor Neto
+ */
 public class DiffieHellman implements Serializable {
     private final BigInteger X;
     private final BigInteger g;

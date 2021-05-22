@@ -2,12 +2,11 @@ package pt.ubi.di.security.model;
 
 import java.io.*;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 
 /**
+ * Refactor and Doc: @author Vitor Neto
  * PublicKey(n,e)
  * PrivateKey(n,d)
- *
  *  a ≡ b (mod n) -> there is an integer k such that a − b = kn
  *  a mod n = b mod n
  */
@@ -59,7 +58,6 @@ public class SecurityRSA {
     public SecurityRSA() {
         p = SecurityUtil.generatePrime(1024,false);
         q = SecurityUtil.generatePrime(1024/*TODO needs to have slight difference*/,false);
-        System.out.println("numbers generated");
         generateN();
         generatePhi();
         generateLambda();
@@ -67,50 +65,48 @@ public class SecurityRSA {
         generateD();
     }
 
+    //--------------------------------------------------------------------------------------
+
     /**
-     * TODO return keys
      * @param outputStream
      * @param inputStream
      */
-    public static void startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+    public static RsaKeys[] startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
         System.out.println(">Starting RSA key exchange");
 
         SecurityRSA factoryRSA = new SecurityRSA();
-        System.out.println("------------------RSA keys------------------");
-        System.out.println("My Public Key: "+ factoryRSA.getE() + "\nMy Private Key: " + factoryRSA.getD());
-        System.out.println("-------------------------------------------");
+        RsaKeys parKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getD(),factoryRSA.getN());
 
         try {
-            RsaKeys publicKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getN());
-            outputStream.writeObject(publicKey);
+            RsaKeys myPublicKey = new RsaKeys(parKey.getE(),parKey.getN());
+            outputStream.writeObject(myPublicKey);
             RsaKeys receivedPublicKey = (RsaKeys) inputStream.readObject();
-            System.out.println("Shared public key: " + receivedPublicKey.getE());
+            return new RsaKeys[]{parKey,receivedPublicKey};
         } catch (Exception e) {
             System.out.println("Error writing or reading key: " + e.getMessage());
         }
+        return new RsaKeys[]{parKey,null};
     }
 
     /**
-     * TODO return keys
      * @param outputStream
      * @param inputStream
      */
-    public static void receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+    public static RsaKeys[] receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
         System.out.println(">Starting RSA key exchange");
 
         SecurityRSA factoryRSA = new SecurityRSA();
-        System.out.println("------------------RSA keys------------------");
-        System.out.println("My Public Key: "+ factoryRSA.getE() + "\nMy Private Key: " + factoryRSA.getD());
-        System.out.println("-------------------------------------------");
+        RsaKeys parKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getD(),factoryRSA.getN());
 
-        RsaKeys myPublicKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getN());
         try {
+            RsaKeys myPublicKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getN());
             RsaKeys receivedPublicKey = (RsaKeys) inputStream.readObject();
             outputStream.writeObject(myPublicKey);
-            System.out.println("Shared public key: " + receivedPublicKey.getE());
+            return new RsaKeys[]{parKey,receivedPublicKey};
         } catch (Exception e) {
             System.out.println("Error writing or reading key: " + e.getMessage());
         }
+        return new RsaKeys[]{parKey,null};
     }
 
     //--------------------------------------------------------------------------------------
@@ -149,12 +145,12 @@ public class SecurityRSA {
 
     /**
      * Method to encrypt a String message with a public key
-     * @param message String - the plain text message
+     * @param message byte[] - the plain text message
      * @param publicKey RsaKeys - the object with the public key to encrypt
      * @return BigInteger return the cipher in BigInteger format
      */
-    public static BigInteger encryptMessage(String message,RsaKeys publicKey){
-        return (new BigInteger(message.getBytes())).modPow(publicKey.getE(),publicKey.getN());
+    public static BigInteger encryptMessage(byte[] message,RsaKeys publicKey){
+        return (new BigInteger(message)).modPow(publicKey.getE(),publicKey.getN());
     }
 
     /**

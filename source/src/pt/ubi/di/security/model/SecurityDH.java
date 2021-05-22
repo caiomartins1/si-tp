@@ -4,6 +4,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 
+/**
+ * @author Vitor Neto
+ */
 public class SecurityDH{
 
     private BigInteger x;

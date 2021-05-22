@@ -15,6 +15,7 @@ import java.util.Random;
  *
  *  puzzle     |         XB        |       YB        |
  *             | message XOR noise | key(incomplete) |
+ * @author Vitor Neto
  */
 public class SecurityMP implements Serializable {
 
