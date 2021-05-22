@@ -2,6 +2,7 @@ package pt.ubi.di.security.model;
 
 import java.io.*;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 
 /**
  * PublicKey(n,e)
@@ -113,62 +114,57 @@ public class SecurityRSA {
     }
 
     //--------------------------------------------------------------------------------------
-    //assinar o hash da mensagem com a sua chave privada
-    public BigInteger sign_Message(String plain_message){
-        byte[] convert = plain_message.getBytes();
-        byte[] hmsg = SecurityUtil.hash("SHA-256",convert);
-        //assina com a sua chave privada sobre o valor de hash da mensagem
-        BigInteger sign_msg = (new BigInteger(hmsg)).modPow(d,n);
-        return sign_msg;
+
+    /**
+     * Method that returns a BigInteger that represents the encrypted hash of the message
+     * the public key can be used to decrypt the hash for comparison
+     * 1. create hash of the message
+     * 2. transform the hash to BigInteger format
+     * 3. (hashInteger ^ d) mod n = signature
+     * Signs a message hash with a private key, public key can be used to check its integrity
+     * @param message byte[] - message to sign, byte[] so it can be anything
+     * @param privateKey RsaKeys - RSA private key with D and N values
+     * @return BigInteger - number that represents the encrypted hash
+     */
+    public static BigInteger signWithRSA(byte[] message, RsaKeys privateKey){
+        return (new BigInteger(SecurityUtil.hash("SHA2-256",message))).modPow(privateKey.getD(),privateKey.getN());
     }
-    //verificar a assinatura da mensagem com a chave pública do outro cliente
-    public void verify_signature(BigInteger ciphermessage, BigInteger sign_msg, BigInteger pk, BigInteger n){
-        String hash = "SHA-256";
-        //verificar o hash assinado
-        byte[] hash_msg = decript_signed_Message(sign_msg, pk, n);
-        //decifrar o hash da mensagem cifrada
-        byte[] msg = decript_Message(ciphermessage).getBytes();
-        //verificar se é igual ou não
-        if(SecurityUtil.checkHash(msg, hash_msg)){
-            System.out.println("Is Equal");
+
+    /**
+     * Method to check message signature, make the hash from the message receive, and decrypt
+     * the signature received by using the correspond public key
+     * @param message byte[] - message to verify signature, byte[] so it can be anything
+     * @param signature BigInteger - signature in BigInteger format
+     * @param publicKey RsaKeys - rsa public key with E and N values
+     */
+    public static void verifySignature(byte[] message, BigInteger signature, RsaKeys publicKey){
+        byte[] hashReal = SecurityUtil.hash("SHA2-256",message);
+        byte[] hashReceived = signature.modPow(publicKey.getE(),publicKey.getN()).toByteArray();
+        if(SecurityUtil.checkHash(hashReal,hashReceived)){
+            System.out.println("Signature is valid for this message.");
         }else{
-            System.out.println("Is NOT Equal");
+            System.out.println("Signature is not valid for this message.");
         }
     }
-    //decifra com a chave pública do cliente (other one)
-    public byte[] decript_signed_Message(BigInteger ciphertext, BigInteger pk, BigInteger n){
-        byte[] decrpt = ciphertext.modPow(pk,n).toByteArray();
-        //return decrpt - devolve hash da mensagem assinado com a chave privada
-        return decrpt;
-    }
-    //------------------------------------------------------------------------
-    //encriptação da mensagem com a chave pública do cliente (other one)
-    public BigInteger encript_Message(String plain_message, BigInteger pk, BigInteger n){
-        byte[] convert = plain_message.getBytes();
-        BigInteger encripted_msg = (new BigInteger(convert)).modPow(pk,n);
-        //String encripted_msg = (new BigInteger(plain_message)).modPow(pk,n).toString();
-        //devolve o BigInteger da mensagem encriptada com a chave publica
-        return encripted_msg;
+
+    /**
+     * Method to encrypt a String message with a public key
+     * @param message String - the plain text message
+     * @param publicKey RsaKeys - the object with the public key to encrypt
+     * @return BigInteger return the cipher in BigInteger format
+     */
+    public static BigInteger encryptMessage(String message,RsaKeys publicKey){
+        return (new BigInteger(message.getBytes())).modPow(publicKey.getE(),publicKey.getN());
     }
 
-    //encriptação do hash da mensagem com a chave pública do cliente (other one)
-    public BigInteger encript_hashMessage(String plain_message, BigInteger pk, BigInteger n){
-        byte[] convert = plain_message.getBytes();
-        //determinar o hash da mensagem decifrada
-        String hash = "SHA-256";
-        byte[] hmsg = SecurityUtil.hash(hash,convert);
-        BigInteger encripted_msg = (new BigInteger(hmsg)).modPow(pk,n);
-        //String encripted_msg = (new BigInteger(plain_message)).modPow(pk,n).toString();
-        //devolve o BigInteger da mensagem encriptada com a chave publica
-        return encripted_msg;
-    }
-
-    //decifração do criptograma com a sua chave privada
-    public String decript_Message(BigInteger ciphertext){
-        byte[] decrpt = ciphertext.modPow(d,n).toByteArray();
-        String decrpt_msg = new String(decrpt);
-        //return String - devolve uma String
-        return decrpt_msg;
+    /**
+     * Method to decrypt a cipher, in BigInteger format, with a private key
+     * @param cipher BigInteger - cipher wished to be decrypted
+     * @param privateKey RsaKeys - rsa private key
+     * @return String - clean text message
+     */
+    public static String decryptMessage(BigInteger cipher,RsaKeys privateKey){
+        return SecurityUtil.byteArrayToString(cipher.modPow(privateKey.getD(),privateKey.getE()).toByteArray());
     }
 
     //--------------------------------------------------------------------

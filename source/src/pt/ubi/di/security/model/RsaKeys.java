@@ -3,9 +3,21 @@ package pt.ubi.di.security.model;
 import java.io.Serializable;
 import java.math.BigInteger;
 
+/**
+ * Format: PublicKey(n,e) or PrivateKey(n,d)
+ */
 public class RsaKeys implements Serializable {
+    /**
+     * Part of public key
+     */
     private final BigInteger e;
+    /**
+     *Part of private key
+     */
     private final BigInteger d;
+    /**
+     *Part of private and public key (public value)
+     */
     private final BigInteger n;
 
     /**
