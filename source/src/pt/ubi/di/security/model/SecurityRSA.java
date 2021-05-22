@@ -55,9 +55,11 @@ public class SecurityRSA {
      * Constructor to start the generation of the key by giving the bitLength size of the prime number
      * TODO
      */
-    public SecurityRSA() {
-        p = SecurityUtil.generatePrime(512,false);
-        q = SecurityUtil.generatePrime(512/*TODO needs to have slight difference*/,false);
+    public SecurityRSA(int bitLength, boolean verbose) {
+        if(bitLength<1)
+            bitLength = 1024;
+        p = SecurityUtil.generatePrime(bitLength,verbose);
+        q = SecurityUtil.generatePrime(bitLength,verbose);
         generateN();
         generatePhi();
         generateLambda();
@@ -68,16 +70,31 @@ public class SecurityRSA {
     //--------------------------------------------------------------------------------------
 
     /**
-     * @param outputStream
-     * @param inputStream
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
      */
-    public static RsaKeys[] startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
+    public static RsaKeys[] startExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
         System.out.println(">Starting RSA key exchange");
+        int lengthBit = 1024;
+        boolean verbose = false;
+        int index = (SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"}));
+        if (index!=-1) {
+            try {
+                lengthBit = Integer.parseInt(options[index + 1]);
+            }
+            catch (Exception e){
+                System.out.println("Error: "+e.getMessage() + " 1024 being used as default.");
+            }
+        }
+        if ((SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"})) != -1)
+            verbose = true;
 
-        SecurityRSA factoryRSA = new SecurityRSA();
+        SecurityRSA factoryRSA = new SecurityRSA(lengthBit,verbose);
+
         RsaKeys parKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getD(),factoryRSA.getN());
 
         try {
+            outputStream.writeObject(options);
             RsaKeys myPublicKey = new RsaKeys(parKey.getE(),parKey.getN());
             outputStream.writeObject(myPublicKey);
             RsaKeys receivedPublicKey = (RsaKeys) inputStream.readObject();
@@ -89,13 +106,33 @@ public class SecurityRSA {
     }
 
     /**
-     * @param outputStream
-     * @param inputStream
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
      */
     public static RsaKeys[] receiveExchange(ObjectOutputStream outputStream, ObjectInputStream inputStream) {
         System.out.println(">Starting RSA key exchange");
+        String[] options = new String[]{};
+        try {
+            options =(String[]) inputStream.readObject();
+        } catch (Exception e) {
+            System.out.println("Error receiving options: " + e.getMessage());
+        }
 
-        SecurityRSA factoryRSA = new SecurityRSA();
+        int lengthBit = 1024;
+        boolean verbose = false;
+        int index = (SecurityUtil.lookOptions(options,new String[]{"-l"}));
+        if (index!=-1) {
+            try {
+                lengthBit = Integer.parseInt(options[index + 1]);
+            }
+            catch (Exception e){
+                System.out.println("Error: "+e.getMessage() + " 1024 being used as default.");
+            }
+        }
+        if ((SecurityUtil.lookOptions(options,new String[]{"-v"})) != -1)
+            verbose = true;
+
+        SecurityRSA factoryRSA = new SecurityRSA(lengthBit,verbose);
         RsaKeys parKey = new RsaKeys(factoryRSA.getE(),factoryRSA.getD(),factoryRSA.getN());
 
         try {
@@ -109,54 +146,123 @@ public class SecurityRSA {
         return new RsaKeys[]{parKey,null};
     }
 
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param message byte[] - message to send
+     * @param key RsaKeys - key to use for signature
+     */
+    public static void sendSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, byte[] message,RsaKeys key) {
+        try {
+            outputStream.writeObject(signWithRSA(message,key));
+        }catch (Exception e) {
+            System.out.println("Error sending signature: "+ e.getMessage());
+        }
+    }
+
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param message byte[] - message to compare
+     * @param key RsaKeys - key to use for signature
+     * @return boolean - true or false if the signature is valid
+     */
+    public static boolean receiveSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, byte[] message, RsaKeys key) {
+        try {
+            byte[] signature = (byte[]) inputStream.readObject();
+            return  verifySignatureWithRSA(message,signature,key);
+        }catch (Exception e) {
+            System.out.println("Error sending signature: "+ e.getMessage());
+        }
+        return false;
+    }
+
     //--------------------------------------------------------------------------------------
 
     /**
      * Method that returns a BigInteger that represents the encrypted hash of the message
      * the public key can be used to decrypt the hash for comparison
      * 1. create hash of the message
-     * 2. transform the hash to BigInteger format
+     * 2. transform the hash to BigInteger format -> turn positive if negative
      * 3. (hashInteger ^ d) mod n = signature
      * Signs a message hash with a private key, public key can be used to check its integrity
      * @param message byte[] - message to sign, byte[] so it can be anything
      * @param privateKey RsaKeys - RSA private key with D and N values
-     * @return BigInteger - number that represents the encrypted hash
+     * @return byte[] - byte[] that represents the encrypted hash
      */
-    public static BigInteger signWithRSA(byte[] message, RsaKeys privateKey){
-        return (new BigInteger(SecurityUtil.hash("SHA-256",message))).modPow(privateKey.getD(),privateKey.getN());
+    public static byte[] signWithRSA(byte[] message, RsaKeys privateKey){
+        if(!privateKey.asAlgo()) {
+            System.out.println(">Can not apply signature, key is too small");
+            return new byte[0];
+        }
+        BigInteger hashInteger = (new BigInteger(SecurityUtil.hash(privateKey.getAlgo(),message)));
+        if(hashInteger.signum()<0)
+            hashInteger = hashInteger.negate();
+        return hashInteger.modPow(privateKey.getD(),privateKey.getN()).toByteArray();
     }
 
     /**
      * Method to check message signature, make the hash from the message receive, and decrypt
      * the signature received by using the correspond public key
+     * 1. calculate hash of the message received (real hash) -> convert to positive if negative
+     * 2. (hashInteger ^ e) mod n = hashInteger
+     * 3. decipher hashInteger to hash
+     * 4. compare the two hashes
      * @param message byte[] - message to verify signature, byte[] so it can be anything
-     * @param signature BigInteger - signature in BigInteger format
+     * @param signature byte[] - signature in byte[] format
      * @param publicKey RsaKeys - rsa public key with E and N values
-     * @return boolran returns true if signature is valid false if else
+     * @return boolean returns true if signature is valid false if else
      */
-    public static boolean verifySignatureWithRSA(byte[] message, BigInteger signature, RsaKeys publicKey){
-        byte[] hashReal = SecurityUtil.hash("SHA-256",message);
-        byte[] hashReceived = signature.modPow(publicKey.getE(),publicKey.getN()).toByteArray();
+    public static boolean verifySignatureWithRSA(byte[] message, byte[] signature, RsaKeys publicKey){
+        if(!publicKey.asAlgo()) {
+            System.out.println("\n>Can not apply signature, key is too small");
+            return false;
+        }
+        byte[] hashReal = SecurityUtil.hash(publicKey.getAlgo(),message);
+        BigInteger hashRealInteger = new BigInteger(hashReal);
+        if(hashRealInteger.signum()<0) {
+            hashRealInteger = hashRealInteger.negate();
+            hashReal = hashRealInteger.toByteArray();
+        }
+        BigInteger hashSignatureInteger = (new BigInteger(signature));
+
+        byte[] hashReceived = hashSignatureInteger.modPow(publicKey.getE(),publicKey.getN()).toByteArray();
         return SecurityUtil.checkHash(hashReal, hashReceived);
     }
 
     /**
      * Method to encrypt a String message with a public key
+     *
+     *  0<=message<n
+     *
      * @param message byte[] - the plain text message
      * @param publicKey RsaKeys - the object with the public key to encrypt
      * @return byte[] return the cipher in byte[] format
      */
     public static byte[] encryptMessage(byte[] message,RsaKeys publicKey){
+        if(new BigInteger(message).compareTo(publicKey.getN())>=0) {
+            System.out.println(">Can not encrypt, key is too small.");
+            return new byte[0];
+        }
         return (new BigInteger(message)).modPow(publicKey.getE(),publicKey.getN()).toByteArray();
     }
 
     /**
+     *
+     * 0<=cipher<n
+     *
      * Method to decrypt a cipher, in BigInteger format, with a private key
      * @param cipher BigInteger - cipher wished to be decrypted
      * @param privateKey RsaKeys - rsa private key
      * @return byte[] - clean text message in byte array format
      */
     public static byte[] decryptMessage(byte[] cipher,RsaKeys privateKey){
+        if(new BigInteger(cipher).compareTo(privateKey.getN())>=0) {
+            System.out.println(">Can not decrypt, key is too small.");
+            return new byte[0];
+        }
         return (new BigInteger(cipher)).modPow(privateKey.getD(),privateKey.getN()).toByteArray();
     }
 

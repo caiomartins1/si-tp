@@ -71,7 +71,7 @@ public class Server_Lite {
                                 SecurityRSA.help();
                             else {
                                 outputStream.writeObject("rsa");
-                                rsaKeys = SecurityRSA.startExchange(outputStream,inputStream);
+                                rsaKeys = SecurityRSA.startExchange(outputStream,inputStream, options);
                                 System.out.println("------------------RSA keys------------------");
                                 System.out.println("My Public Key: "+ rsaKeys[KEY_PAIR].getE() + "\nMy Private Key: " + rsaKeys[KEY_PAIR].getD());
                                 System.out.println("-------------------------------------------");
@@ -113,19 +113,24 @@ public class Server_Lite {
                             }
                             break;
                         case "-message":
-                            outputStream.writeObject("message");
-                            communicate(new String[]{"-sign"});
+                            index = SecurityUtil.lookOptions(options, new String[]{"help","-help","--help","-h","--h"});
+                            if(index!=-1)
+                                communicateHelp();
+                            else {
+                                outputStream.writeObject("message");
+                                communicate(options);
+                            }
                             break;
                         case "-help":
                             System.out.println(
                                     """
                                             Commands ===================================================================
-                                            -dh, Diffie-Hellman Key-agreement protocol
-                                            -mkp, Merkle Puzzle Key-agreement protocol
-                                            -sk, share a session key by using a KAP
-                                            -ck, use hmac to verify if the shared secret key is the same
-                                            -message, send encrypted message between each other
-                                            -rsa, share messages using RSA - public and secret key
+                                            -dh [-option] ..., Diffie-Hellman Key-agreement protocol
+                                            -mkp [-option] ..., Merkle Puzzle Key-agreement protocol
+                                            -rsa [-option] ..., share messages using RSA - public and secret key
+                                            -sk [-option] ..., share a session key by using a KAP
+                                            -ck [-option] ..., use hmac to verify if the shared secret key is the same
+                                            -message [-option] ..., send encrypted message between each other
                                             Type -\033[3moption\033[0m help -help --help -h --h, for more information regarding each option
                                             ============================================================================
                                             """
@@ -159,7 +164,7 @@ public class Server_Lite {
 
         try { // send options
             outputStream.writeObject(options);
-            if(SecurityUtil.lookOptions(options,new String[]{"-sign"}) != -1) { // receive and test signature
+            if(SecurityUtil.lookOptions(options,new String[]{"-sign"}) != -1 && rsaKeys[KEY_PAIR].asAlgo()) { // receive and test signature
                 if (!(rsaKeys[PUBLIC_KEY] == null || rsaKeys[KEY_PAIR] == null)) {
                     System.out.println("Using rsa signature for message validation.");
                     signFlag = true;
@@ -188,7 +193,7 @@ public class Server_Lite {
                 SecurityUtil.sendMessage(outputStream,inputStream,message,secretKey,new String[]{});
 
                 if(signFlag) {
-                    SecurityUtil.sendSignature(outputStream,inputStream,message,rsaKeys[KEY_PAIR]);
+                    SecurityRSA.sendSignature(outputStream,inputStream,message.getBytes(),rsaKeys[KEY_PAIR]);
                 }
 
                 try {
@@ -201,13 +206,27 @@ public class Server_Lite {
                 String receiveMessage = SecurityUtil.receiveMessage(outputStream,inputStream,secretKey);
 
                 if(signFlag) {
-                    if (!SecurityUtil.receiveSignature(outputStream,inputStream,receiveMessage,rsaKeys[PUBLIC_KEY]))
+                    if (!SecurityRSA.receiveSignature(outputStream,inputStream,receiveMessage.getBytes(),rsaKeys[PUBLIC_KEY]))
                         System.out.println("\n>Signature invalid, do not trust the message.");
                 }
-                
+
                 System.out.println(receiveMessage);
                 System.out.print("message>");
             }
     }
+
+    public void communicateHelp() {
+        System.out.println(
+                """
+                        Message commands ===================================================================
+                        -message [-option] ...., send encrypted message between each other (sets a command line for talking)
+                        -sign, use rsa keys to sign the messages, does verification and warns the user if they don't match 
+                        -exit, leave the message command line
+                        ====================================================================================
+                        """
+        );
+    }
+
+
 
 }

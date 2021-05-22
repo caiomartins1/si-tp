@@ -512,7 +512,7 @@ public class SecurityUtil {
         else if(KAP == KAP_MP)
             cipherKey = SecurityMP.startExchange(outputStream, inputStream,new String[]{"-l","32"});
         else
-            rsaKeys = SecurityRSA.startExchange(outputStream,inputStream);
+            rsaKeys = SecurityRSA.startExchange(outputStream,inputStream,new String[]{"-l","1024"});
 
 
         if((cipherKey.length == 0 && (KAP == KAP_DH || KAP == KAP_MP))) {
@@ -667,39 +667,6 @@ public class SecurityUtil {
      *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
-     * @param message
-     * @param key
-     */
-    public static void sendSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, String message,RsaKeys key) {
-        try {
-            outputStream.writeObject(SecurityRSA.signWithRSA(message.getBytes(),key));
-        }catch (Exception e) {
-            System.out.println("Error sending signature: "+ e.getMessage());
-        }
-    }
-
-    /**
-     *
-     * @param outputStream ObjectOutputStream - output information to send information
-     * @param inputStream ObjectInputStream - inputStream to receive information
-     * @param message
-     * @param key
-     * @return
-     */
-    public static boolean receiveSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, String message, RsaKeys key) {
-        try {
-            BigInteger signature = (BigInteger) inputStream.readObject();
-            return  SecurityRSA.verifySignatureWithRSA(message.getBytes(),signature,key);
-        }catch (Exception e) {
-            System.out.println("Error sending signature: "+ e.getMessage());
-        }
-        return false;
-    }
-
-    /**
-     *
-     * @param outputStream ObjectOutputStream - output information to send information
-     * @param inputStream ObjectInputStream - inputStream to receive information
      * @param key
      */
     public static void checkSharedKey(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
@@ -786,8 +753,9 @@ public class SecurityUtil {
         System.out.println(
                 """
                         Session Key sharing Commands =====================================================================================
+                        -sk [-option] ... [-option \033[3mvalue\033[0m] ...
                         -l -length --length \033[3mlengthByte\033[0m, length of the key to share (byte), default is 64
-                        -dh -mkp, algorithm to use for key pre-distribution
+                        -dh -mkp -rsa, algorithm to use for key pre-distribution
                         -hmac, use hmac to verify integrity of session key exchange
                         -v -verbose --verbose, shows verbose
                         ==================================================================================================================

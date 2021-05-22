@@ -109,11 +109,13 @@ public class Client_Lite {
             return;
         }
         String[] options;
-        try { // receive options
+        try {
             options =(String[]) inputStream.readObject();
-            if (!(rsaKeys[PUBLIC_KEY] == null || rsaKeys[KEY_PAIR] == null)) {
-                System.out.println("Using rsa signature for message validation.");
-                signFlag = true;
+            if(SecurityUtil.lookOptions(options,new String[]{"-sign"}) != -1 && rsaKeys[KEY_PAIR].asAlgo()) { // receive and test signature
+                if (!(rsaKeys[PUBLIC_KEY] == null || rsaKeys[KEY_PAIR] == null)) {
+                    System.out.println("Using rsa signature for message validation.");
+                    signFlag = true;
+                }
             }
         } catch (Exception e) {
             System.out.println("Error receiving options.");
@@ -130,7 +132,7 @@ public class Client_Lite {
             String receiveMessage = SecurityUtil.receiveMessage(outputStream,inputStream,secretKey);
 
             if(signFlag) {
-                if (!SecurityUtil.receiveSignature(outputStream,inputStream,receiveMessage,rsaKeys[PUBLIC_KEY]))
+                if (!SecurityRSA.receiveSignature(outputStream,inputStream,receiveMessage.getBytes(),rsaKeys[PUBLIC_KEY]))
                     System.out.println("\n>Signature invalid, do not trust the message.");
             }
 
@@ -150,7 +152,7 @@ public class Client_Lite {
                 }
             SecurityUtil.sendMessage(outputStream,inputStream,message,secretKey,new String[]{});
             if(signFlag) {
-                SecurityUtil.sendSignature(outputStream,inputStream,message,rsaKeys[KEY_PAIR]);
+                SecurityRSA.sendSignature(outputStream,inputStream,message.getBytes(),rsaKeys[KEY_PAIR]);
             }
         }
     }

@@ -38,6 +38,19 @@ public class RsaKeys implements Serializable {
     private byte[] privateKey;
 
     /**
+     * algo to be used for message digesting
+     */
+    private String algo;
+
+    /**
+     * prob shouldn't be kept here but oh well
+     */
+    private static final BigInteger md5MaxSize = BigInteger.valueOf(2).pow(128);
+    private static final BigInteger sha1MaxSize = BigInteger.valueOf(2).pow(160);
+    private static final BigInteger sha256MaxSize = BigInteger.valueOf(2).pow(256);
+    private static final BigInteger sha512MaxSize = BigInteger.valueOf(2).pow(512);
+
+    /**
      * Constructor for publicKey
      * @param e
      * @param n
@@ -51,6 +64,7 @@ public class RsaKeys implements Serializable {
         nSize = n.toByteArray().length;
         dSize = -1;
         transformPublicKeyToByte();
+        checkAlgoToSign();
     }
 
     /**
@@ -68,6 +82,7 @@ public class RsaKeys implements Serializable {
         dSize = d.toByteArray().length;
         transformPrivateKeyToByte();
         transformPublicKeyToByte();
+        checkAlgoToSign();
     }
 
     private void transformPublicKeyToByte() {
@@ -80,6 +95,19 @@ public class RsaKeys implements Serializable {
         privateKey = new byte[n.toByteArray().length+d.toByteArray().length];
         System.arraycopy(n.toByteArray(),0,privateKey,0,nSize);
         System.arraycopy(d.toByteArray(),0,privateKey,nSize,dSize);
+    }
+
+    public void checkAlgoToSign (){
+        if (n.compareTo(sha512MaxSize) >= 0)
+            algo = "SHA512";
+        else if(n.compareTo(sha256MaxSize) >= 0)
+            algo = "SHA256";
+        else if(n.compareTo(sha1MaxSize) >= 0)
+            algo = "SHA1";
+        else if(n.compareTo(md5MaxSize) >= 0)
+            algo = "MD5";
+        else
+            algo = "";
     }
 
     public byte[] getPublicKey() {
@@ -112,6 +140,17 @@ public class RsaKeys implements Serializable {
 
     public BigInteger getD() {
         return d;
+    }
+
+    public String getAlgo() {
+        return algo;
+    }
+
+    /**
+     * @return true if rsaKey has message digest algorithm setup, else false
+     */
+    public boolean asAlgo() {
+        return !algo.equals("");
     }
 
     @Override
