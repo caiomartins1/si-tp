@@ -306,7 +306,7 @@ public class SecurityUtil {
      * @param key byte[] - key to check size
      * @return true if key is okay to use else false
      */
-    private static boolean checkKeyAES(byte[] key) {
+    public static boolean checkKeyAES(byte[] key) {
         return key.length == 16 || key.length == 24 || key.length == 32;
     }
 
@@ -372,13 +372,42 @@ public class SecurityUtil {
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
         try {
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
             return cipher.doFinal(finalCipher,BOCK_SIZE,finalCipher.length - BOCK_SIZE);
         } catch (Exception e) {
             System.out.println("Error decrypting cipher (AES): " + e.getMessage());
         }
         System.out.println(">Error decrypting.");
+        return new byte[0];
+    }
+
+    /**
+     * Function to decipher a cipher.
+     * Uses AES-CBC to decipher
+     * iv is a 16 byte array that is kept at the start of the cipher
+     * @param finalCipher byte[] - cipher in byte array format
+     * @param key byte[] - byte array key
+     * @return byte[] -  decrypted cipher, return empty array if unable to decipher
+     */
+    public static byte[] decipherSecurity2(byte[] finalCipher,byte[] key) {
+        if(!checkKeyAES(key)){
+            return new  byte[0];
+        }
+        else if(finalCipher == null) {
+            return new  byte[0];
+        }
+        else if(finalCipher.length==0){
+            return new  byte[0];
+        }
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivParameterSpec = new IvParameterSpec(finalCipher,0,BOCK_SIZE);
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
+            return cipher.doFinal(finalCipher,BOCK_SIZE,finalCipher.length - BOCK_SIZE);
+        } catch (Exception e) {
+        }
         return new byte[0];
     }
 
@@ -467,7 +496,7 @@ public class SecurityUtil {
         return shareSessionKeys(outputStream,inputStream,options,SecurityUtil.generateNumber(lengthByte));
     }
 
-    /**
+    /**TODO:doc
      * Method to start a session key distribution, it receives the key directly in byte[] format
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
@@ -556,7 +585,7 @@ public class SecurityUtil {
         return new byte[0];
     }
 
-    /**
+    /**TODO:doc
      *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
@@ -614,8 +643,7 @@ public class SecurityUtil {
         return new byte[0];
     }
 
-    /**
-     *
+    /**TODO:doc
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @param message String - the clean message desired to be encrypted and sent
@@ -638,7 +666,7 @@ public class SecurityUtil {
     }
 
     /**
-     * Receive incrypted text message and decrypt them sending the clean text.
+     * Receive encrypted text message and decrypt them sending the clean text.
      * Uses AES-CBC
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
@@ -663,8 +691,7 @@ public class SecurityUtil {
         return "";
     }
 
-    /**
-     *
+    /**TODO:doc
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @param key
@@ -685,8 +712,7 @@ public class SecurityUtil {
         }
     }
 
-    /**
-     *
+    /**TODO:doc
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @param key
@@ -709,8 +735,7 @@ public class SecurityUtil {
         }
     }
 
-    /**
-     *
+    /**TODO:doc
      * @param message
      * @param key
      * @return
@@ -720,8 +745,7 @@ public class SecurityUtil {
         return  encryptSecurity(msd, key);
     }
 
-    /**
-     *
+    /**TODO:doc
      * @param hmac
      * @param message
      * @param key

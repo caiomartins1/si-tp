@@ -101,6 +101,10 @@ public class Client_Lite {
         }
     }
 
+    /**
+     * Method to create private message sending and receiving
+     * @author Vitor Neto
+     */
     private void communicate() {
         boolean flag;
         boolean signFlag = false;

@@ -69,7 +69,7 @@ public class SecurityRSA {
 
     //--------------------------------------------------------------------------------------
 
-    /**
+    /**TODO: DOC
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      */
@@ -105,7 +105,7 @@ public class SecurityRSA {
         return new RsaKeys[]{parKey,null};
     }
 
-    /**
+    /**TODO: DOC
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      */
@@ -146,7 +146,7 @@ public class SecurityRSA {
         return new RsaKeys[]{parKey,null};
     }
 
-    /**
+    /**TODO: DOC
      *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
@@ -167,7 +167,7 @@ public class SecurityRSA {
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @param message byte[] - message to compare
      * @param key RsaKeys - key to use for signature
-     * @return boolean - true or false if the signature is valid
+     * @return boolean - true if the signature is valid else false
      */
     public static boolean receiveSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, byte[] message, RsaKeys key) {
         try {
@@ -234,7 +234,6 @@ public class SecurityRSA {
 
     /**
      * Method to encrypt a String message with a public key
-     *
      *  0<=message<n
      *
      * @param message byte[] - the plain text message
@@ -249,7 +248,7 @@ public class SecurityRSA {
         return (new BigInteger(message)).modPow(publicKey.getE(),publicKey.getN()).toByteArray();
     }
 
-    /**
+    /**TODO: DOC
      *
      * 0<=cipher<n
      *
@@ -295,7 +294,7 @@ public class SecurityRSA {
     }
 
     /**
-     * 1<e<λ(n) && gcd(e,λ(n))==1
+     * Method to generate e -> 1<e<λ(n) && gcd(e,λ(n))==1
      * Or use default value: (2^16 + 1 = 65,537)
      */
     public void generateE() {
@@ -305,7 +304,7 @@ public class SecurityRSA {
     }
 
     /**
-     * Determine d ≡ e^(-1) (mod λ(n)) <-> d*e ≡ 1 (mod λ(n))
+     * Method to generate d -> d ≡ e^(-1) (mod λ(n)) <-> d*e ≡ 1 (mod λ(n))
      */
     public void generateD() {
         d = e.modInverse(lamb);

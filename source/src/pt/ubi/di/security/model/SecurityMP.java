@@ -54,9 +54,14 @@ public class SecurityMP implements Serializable {
     /**
      * Array list of all the keys that where created to send in puzzle format
      */
-    private final ArrayList<byte[]> secretKeys; //list of puzzles
+    private final ArrayList<byte[]> secretKeys;
 
     Random rand = new Random();
+
+    private int option;
+
+    private static final int USE_OTPE = 1;
+    private static final int USE_AES = 0;
 
     /**
      * <p>Constructor to setup a key exchange using Merkle Puzzle</p>
@@ -67,7 +72,7 @@ public class SecurityMP implements Serializable {
      * @param bytesToGuess int - amount of bytes to be omitted from the encryption key (higher values means more time and more secure)
      * @param verbose boolean - allow verbose
      */
-    public SecurityMP(int N, int secretSize,int keySize,int bytesToGuess,boolean verbose) {
+    public SecurityMP(int N, int secretSize,int keySize,int bytesToGuess,int option,boolean verbose) {
         if(N>0)
             this.N = N;
         else {
@@ -85,6 +90,14 @@ public class SecurityMP implements Serializable {
         else {
             System.out.println("Encryption key size invalid - 16 being used as default.");
             this.keySize = 16;
+        }
+        if(option == USE_AES)
+            this.option = USE_AES;
+        else if (option == USE_OTPE){
+            this.option = USE_OTPE;
+        }
+        else {
+            this.option = USE_OTPE;
         }
         if(0<bytesToGuess && bytesToGuess<=keySize)
             this.bytesToGuess = bytesToGuess;
@@ -122,24 +135,24 @@ public class SecurityMP implements Serializable {
             System.out.print("\n");
     }
 
-    /**
+    /**TODO alter this constructors
      * <p>Constructor for an already created set of puzzles</p>
      * <p>Will solve a given puzzle, creating</p>
      * @param puzzles ArrayList<MerklePuzzle> - list of puzzles
      * @param index int - index of the desired puzzle to solve (on the list)
      */
-    public SecurityMP(ArrayList<MerklePuzzle> puzzles,int index,boolean verbose) {
-        this(puzzles.size(),puzzles.get(0).getSizeSecret(),puzzles.get(0).getSizeKey(),puzzles.get(0).getBytesToGuess(),false);
+    public SecurityMP(ArrayList<MerklePuzzle> puzzles,int index, int option,boolean verbose) {
+        this(1/*TODO need to alter*/,puzzles.get(0).getSizeSecret(),puzzles.get(0).getSizeKey(),puzzles.get(0).getBytesToGuess(),option,false);
         this.puzzles = puzzles;
         solve(index, verbose);
     }
 
-    /**
+    /**TODO alter this constructors
      * <p>Constructor for an already created set of puzzles</p>
      * @param puzzles ArrayList<MerklePuzzle> - list of puzzles
      */
-    public SecurityMP(ArrayList<MerklePuzzle> puzzles, boolean verbose) {
-        this(puzzles.size(),puzzles.get(0).getSizeSecret(),puzzles.get(0).getSizeKey(),puzzles.get(0).getBytesToGuess(),false);
+    public SecurityMP(ArrayList<MerklePuzzle> puzzles, int option, boolean verbose) {
+        this(1/*TODO need to alter*/,puzzles.get(0).getSizeSecret(),puzzles.get(0).getSizeKey(),puzzles.get(0).getBytesToGuess(),option,false);
         this.puzzles = puzzles;
         solve(-1,verbose);
     }
@@ -158,6 +171,7 @@ public class SecurityMP implements Serializable {
             int secretSizeBytes = 32;
             int keySizeBytes = 16;
             int bytesToGuess = 2;
+            int option = USE_OTPE;
             boolean verbose = false;
 
             int index = SecurityUtil.lookOptions(options,new String[]{"-n"});
@@ -193,11 +207,20 @@ public class SecurityMP implements Serializable {
                     System.out.println("Error: "+e.getMessage() + " 2 being used as default.");
                 }
             }
+            index = SecurityUtil.lookOptions(options,new String[]{"-e","-encryption","--encryption"});
+            if(index!=-1) {
+                try {
+                    option = Integer.parseInt(options[index + 1]);
+                } catch (Exception e) {
+                    System.out.println("Error: "+e.getMessage() + " OneTimePadEncryption being used as default.");
+                }
+            }
             index = SecurityUtil.lookOptions(options,new String[]{"-v","-verbose","--verbose"});
             if(index!=-1)
                 verbose = true;
+
             outputStream.writeObject(verbose);
-            SecurityMP factoryMP = new SecurityMP(N,secretSizeBytes,keySizeBytes,bytesToGuess,verbose);
+            SecurityMP factoryMP = new SecurityMP(N,secretSizeBytes,keySizeBytes,bytesToGuess,option,verbose);
             outputStream.writeObject(factoryMP);
             MerklePuzzle puzzleIndex = (MerklePuzzle) inputStream.readObject();
             factoryMP.solveIndex(puzzleIndex, verbose);
@@ -219,7 +242,7 @@ public class SecurityMP implements Serializable {
         try {
             boolean verbose = (boolean) inputStream.readObject();
             SecurityMP factoryMP = (SecurityMP) inputStream.readObject();
-            SecurityMP resultMP = new SecurityMP(factoryMP.getPuzzles(),verbose);
+            SecurityMP resultMP = new SecurityMP(factoryMP.getPuzzles(), factoryMP.getOption(),verbose);
             resultMP.encryptIndex(verbose);
             outputStream.writeObject(resultMP.getFinalSolvedPuzzle());
 
@@ -244,7 +267,13 @@ public class SecurityMP implements Serializable {
         if (key.length - bytesToGuess >= 0)
             System.arraycopy(key, bytesToGuess, keyShorted, 0, key.length - bytesToGuess);
         byte[] message = createMessage(secretSize);
-        byte[] cipher = SecurityUtil.oneTimePadEncrypt(message,key);
+
+        byte[] cipher;
+        if(option == 0 && SecurityUtil.checkKeyAES(key))
+            cipher = SecurityUtil.encryptSecurity(message, key);
+        else
+            cipher = SecurityUtil.oneTimePadEncrypt(message,key);
+
         byte[] puzzle = new byte[cipher.length+keyShorted.length];
         System.arraycopy(cipher,0,puzzle,0,cipher.length);
         System.arraycopy(keyShorted,0,puzzle,cipher.length,keyShorted.length);
@@ -304,11 +333,11 @@ public class SecurityMP implements Serializable {
         flag = false;
         if (verbose) {
             System.out.println(">Solving puzzle");
-            System.out.println("Puzzle: " + SecurityUtil.byteArrayToString(puzzle.getPuzzle()));
+            System.out.println("Puzzle: " + SecurityUtil.byteArrayToHex(puzzle.getPuzzle()));
             System.out.println("Partial key: " + SecurityUtil.byteArrayToHex(partKey));
         }
 
-        solvePuzzleAux(puzzle,cipher,puzzle.getBytesToGuess()-1,partKey,verbose);
+        solvePuzzleAux(puzzle,cipher,puzzle.getBytesToGuess()-1,partKey ,verbose);
     }
 
     /**
@@ -338,31 +367,40 @@ public class SecurityMP implements Serializable {
 
             partKey[dept]=(byte) i;//try to replicate key
 
-            byte[] message = SecurityUtil.oneTimePadEncrypt(cipher,partKey);//try to decipher the cipher
+            byte[] message;
 
-            byte[] messageDigestExpected = new byte[HASH_SIZE];//get the hash in the message
-            System.arraycopy(message,message.length-HASH_SIZE,messageDigestExpected,0,messageDigestExpected.length);
 
-            byte[] secretKey = new byte[puzzle.getSizeSecret()];//get the secretKey from the message
-            System.arraycopy(message,0,secretKey,0,secretKey.length);
+            if(option == 0 && SecurityUtil.checkKeyAES(partKey))
+                message = SecurityUtil.decipherSecurity2(cipher,partKey);//try to decipher the cipher
+            else
+                message = SecurityUtil.oneTimePadEncrypt(cipher,partKey);//try to decipher the cipher
 
-            byte[] messageDigestActual = SecurityUtil.hash("SHA1",secretKey);//message digest the secretKey
+            if(message.length != 0) {
+                byte[] messageDigestExpected = new byte[HASH_SIZE];//get the hash in the message
+                System.arraycopy(message, message.length - HASH_SIZE, messageDigestExpected, 0, messageDigestExpected.length);
 
-            if(SecurityUtil.checkHash(messageDigestActual,messageDigestExpected)) {//compare the hashes if they are equal than means puzzle has been cracked
-                byte[] indexByteArray = new byte[puzzle.getTotalSize()-(puzzle.getSizeKey()-puzzle.getBytesToGuess())-puzzle.getSizeSecret()-HASH_SIZE];
-                System.arraycopy(message,0,chosenSecretKey,0,chosenSecretKey.length);//get secretKey
-                System.arraycopy(message,chosenSecretKey.length,indexByteArray,0,indexByteArray.length);//get index
-                indexOfSecretKey = SecurityUtil.byteToInt(indexByteArray);
-                flag = true;
-                if(verbose) {
-                    System.out.println("\n>Puzzle solved!!!!");
-                    System.out.println("KEY: "+ SecurityUtil.byteArrayToHex(chosenSecretKey));
-                    System.out.println("INDEX: "+ indexOfSecretKey);
+                byte[] secretKey = new byte[puzzle.getSizeSecret()];//get the secretKey from the message
+                System.arraycopy(message, 0, secretKey, 0, secretKey.length);
+
+                byte[] messageDigestActual = SecurityUtil.hash("SHA1", secretKey);//message digest the secretKey
+
+                if (SecurityUtil.checkHash(messageDigestActual, messageDigestExpected)) {//compare the hashes if they are equal than means puzzle has been cracked
+                    byte[] indexByteArray = new byte[message.length - puzzle.getSizeSecret() - HASH_SIZE];//TODO is this really working (?)
+
+                    System.arraycopy(message, 0, chosenSecretKey, 0, chosenSecretKey.length);//get secretKey
+                    System.arraycopy(message, chosenSecretKey.length, indexByteArray, 0, indexByteArray.length);//get index
+                    indexOfSecretKey = SecurityUtil.byteToInt(indexByteArray);
+                    flag = true;
+                    if (verbose) {
+                        System.out.println("\n>Puzzle solved!!!!");
+                        System.out.println("KEY: " + SecurityUtil.byteArrayToHex(chosenSecretKey));
+                        System.out.println("INDEX: " + indexOfSecretKey);
+                    }
+                    break;
                 }
-                break;
+                if (flag)
+                    return;
             }
-            if(flag)
-                return;
             solvePuzzleAux(puzzle,cipher,dept-1,partKey,verbose);
         }
     }
@@ -449,6 +487,7 @@ public class SecurityMP implements Serializable {
                         -lK -lengthK --lengthK \033[3mlengthByte\033[0m, length in bytes of the secret key - default 32
                         -lk -lengthk --lengthk \033[3mlengthByte\033[0m, length in bytes of (puzzle) encryption key - default 16
                         -d -difficulty --difficulty \033[3mamountOfBytes\033[0m, amount of bytes to remove from encryption key (the higher the longer) - default 2
+                        -e -encryption --encryption \033[3mvalue\033[0m, encryption option, 1 being OneTimepadEncryption, and 0 being AES
                         -v -verbose --verbose, shows verbose
                         ==================================================================================================================
                         """
@@ -465,5 +504,9 @@ public class SecurityMP implements Serializable {
 
     public MerklePuzzle getFinalSolvedPuzzle() {
         return finalSolvedPuzzle;
+    }
+
+    public int getOption() {
+        return option;
     }
 }

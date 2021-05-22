@@ -1,14 +1,11 @@
 package pt.ubi.di.security.model;
 
-/**
- * @author Vitor Neto
- */
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.util.Arrays;
 
-/**
+/**TODO: DOC
  * Format: PublicKey(n,e) or PrivateKey(n,d)
+ * @author Vitor Neto
  */
 public class RsaKeys implements Serializable {
     /**
