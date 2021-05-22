@@ -226,6 +226,9 @@ public class SecurityUtil {
      * source: https://howtodoinjava.com/java/java-security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
      */
     public static String byteArrayToHex(byte[] byteArr) {
+        if(byteArr == null)
+            return "";
+
         BigInteger value = new BigInteger(1, byteArr);
         String hex = value.toString(16);
 
@@ -440,49 +443,92 @@ public class SecurityUtil {
     private static final int FAIL = -1;
     private static final int OK = 0;
 
+    private static final int KEY_PAIR = 0;
+    private static final int PUBLIC_KEY = 1;
+
     /**
+     * Method the start a session key distribution, it may receive optional options, if not it uses default values
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @return byte[] - returns the key in byte array format
+     */
+    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
+        int lengthByte = 64;
+        int index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
+        if (index != -1) {
+            try {
+                lengthByte = Integer.parseInt(options[index + 1]);
+                if(lengthByte<=0)
+                    lengthByte = 64;
+            } catch (Exception e) {
+                System.out.println("Error on length: " + e.getMessage() + " 64 being used as default.");
+            }
+        }
+        return shareSessionKeys(outputStream,inputStream,options,SecurityUtil.generateNumber(lengthByte));
+    }
+
+    /**
+     * Method to start a session key distribution, it receives the key directly in byte[] format
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @param sessionKey byte[] - session key wished to be shared
      * @return byte[] - returns the key in byte array format
      */
     public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options, byte[] sessionKey) {
-        int KAP =KAP_DH;
+        int KAP;
         boolean hmacStatus = false;
-        int index = SecurityUtil.lookOptions(options,new String[]{"-mkp"});
-        if(index != -1) {
+
+        if((SecurityUtil.lookOptions(options,new String[]{"-mkp"})) != -1) {
             System.out.println(">Starting Session Key distribution using Merkle Puzzle");
             KAP =KAP_MP;
         }
-        if(KAP==KAP_DH) {
-            System.out.println(">Starting Session Key distribution using Diffie-Hellman");
+        else if((SecurityUtil.lookOptions(options,new String[]{"-rsa"})) != -1) {
+            System.out.println(">Starting Session Key distribution using RSA");
+            KAP = KAP_RSA;
         }
-        index = SecurityUtil.lookOptions(options,new String[]{"-hmac"});
-        if (index!=-1)
+        else{
+            System.out.println(">Starting Session Key distribution using Diffie-Hellman");
+            KAP =KAP_DH;
+        }
+
+        if ((SecurityUtil.lookOptions(options,new String[]{"-hmac"})) != -1)
             hmacStatus = true;
+
         try {
             outputStream.writeInt(KAP);
             outputStream.writeObject(hmacStatus);
         } catch (Exception e) {
-            System.out.println("Error sending KAP: "+ e.getMessage());
+            System.out.println("Error sending KAP or hmacStatus: "+ e.getMessage());
         }
 
         byte[] cipherKey = new byte[32];
+        RsaKeys[] rsaKeys = new RsaKeys[2];
+        rsaKeys[KEY_PAIR] = null;
+        rsaKeys[PUBLIC_KEY] = null;
         byte[] hmac = new byte[512/8];
 
-        if(KAP == KAP_DH) {
+        if(KAP == KAP_DH)
             cipherKey =  SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
-        }
-        else if(KAP == KAP_MP) {
+        else if(KAP == KAP_MP)
             cipherKey = SecurityMP.startExchange(outputStream, inputStream,new String[]{"-l","32"});
-        }
+        else
+            rsaKeys = SecurityRSA.startExchange(outputStream,inputStream);
 
-        if(cipherKey.length == 0) {
+
+        if((cipherKey.length == 0 && (KAP == KAP_DH || KAP == KAP_MP))) {
             System.out.println("Error with cipher key.");
             return new byte[0];
         }
+        else if (((rsaKeys[KEY_PAIR] == null || rsaKeys[PUBLIC_KEY] == null) && KAP==KAP_RSA)) {
+            System.out.println("Error with rsa keys.");
+            return new byte[0];
+        }
 
-        byte[] cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+        byte[] cipher;
+        if (KAP == KAP_MP || KAP == KAP_DH)
+            cipher = SecurityUtil.encryptSecurity(sessionKey, cipherKey);
+        else
+            cipher = SecurityRSA.encryptMessage(sessionKey, rsaKeys[PUBLIC_KEY]);
 
         if(hmacStatus)
             hmac = SecurityUtil.hmac(cipher,cipherKey);
@@ -497,8 +543,9 @@ public class SecurityUtil {
         }
         try {
             int messageIntegrity =(int) inputStream.readObject();
-            if(messageIntegrity == OK)
-                return SecurityUtil.decipherSecurity(cipher, cipherKey);
+            if(messageIntegrity == OK) {
+                    return sessionKey;
+            }
             else if(messageIntegrity == FAIL){
                 System.out.println(">HMAC invalid, message integrity not confirmed.");
                 return new byte[0];
@@ -510,26 +557,7 @@ public class SecurityUtil {
     }
 
     /**
-     * @param outputStream ObjectOutputStream - output information to send information
-     * @param inputStream ObjectInputStream - inputStream to receive information
-     * @return byte[] - returns the key in byte array format
-     */
-    public static byte[] shareSessionKeys(ObjectOutputStream outputStream, ObjectInputStream inputStream, String[] options) {
-        int lengthByte = 64;
-        int index = SecurityUtil.lookOptions(options,new String[]{"-l","-length","--length"});
-        if (index!=-1) {
-            try {
-                lengthByte = Integer.parseInt(options[index + 1]);
-                if(lengthByte<=0)
-                    lengthByte = 64;
-            } catch (Exception e) {
-                System.out.println("Error on length: " + e.getMessage() + " 64 being used as default.");
-            }
-        }
-        return shareSessionKeys(outputStream,inputStream,options,SecurityUtil.generateNumber(lengthByte));
-    }
-
-    /**
+     *
      * @param outputStream ObjectOutputStream - output information to send information
      * @param inputStream ObjectInputStream - inputStream to receive information
      * @return byte[] - returns the key in byte array format
@@ -538,21 +566,28 @@ public class SecurityUtil {
         int KAP = KAP_DH;
         boolean hmacStatus = false;
         boolean hmacCheck = true;
+
         try {
             KAP = inputStream.readInt();
             hmacStatus =(boolean) inputStream.readObject();
 
         } catch (Exception e) {
-            System.out.println("Error receiving KAP: "+ e.getMessage());
+            System.out.println("Error receiving KAP or hmacStatus: "+ e.getMessage());
         }
+
         byte[] cipherKey = new byte[32];
-        if(KAP == KAP_DH) {
+        byte[] cipher;
+        RsaKeys[] rsaKeys = new RsaKeys[2];
+        rsaKeys[KEY_PAIR] = null;
+        rsaKeys[PUBLIC_KEY] = null;
+
+        if(KAP == KAP_DH)
             cipherKey =  SecurityDH.receiveExchange(outputStream,inputStream);
-        }
-        else if(KAP == KAP_MP) {
+        else if(KAP == KAP_MP)
             cipherKey =  SecurityMP.receiveExchange(outputStream,inputStream);
-        }
-        byte[] cipher = new byte[0];
+        else
+            rsaKeys = SecurityRSA.receiveExchange(outputStream,inputStream);
+
         try {
             cipher = (byte[]) inputStream.readObject();
             if(hmacStatus) {
@@ -560,13 +595,13 @@ public class SecurityUtil {
                 byte[] hmac =(byte[]) inputStream.readObject();
                 hmacCheck = hmacCheck(hmac,cipher,cipherKey);
             }
-        } catch (Exception e) {
-            System.out.println("Error receiving cipher: "+ e.getMessage());
-        }
-        try {
             if(hmacCheck) {
                 outputStream.writeObject(OK);
-                return SecurityUtil.decipherSecurity(cipher, cipherKey);
+
+                if(KAP == KAP_DH || KAP == KAP_MP)
+                    return SecurityUtil.decipherSecurity(cipher, cipherKey);
+                else
+                    return SecurityRSA.decryptMessage(cipher,rsaKeys[KEY_PAIR]);
             }
             else {
                 System.out.println(">HMAC invalid, message integrity not confirmed.");
@@ -574,7 +609,7 @@ public class SecurityUtil {
                 return new byte[0];
             }
         } catch (Exception e) {
-            System.out.println("Error sending status: "+ e.getMessage());
+            System.out.println("Error receiving cipher or sending STATUS: "+ e.getMessage());
         }
         return new byte[0];
     }
@@ -628,6 +663,13 @@ public class SecurityUtil {
         return "";
     }
 
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param message
+     * @param key
+     */
     public static void sendSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, String message,RsaKeys key) {
         try {
             outputStream.writeObject(SecurityRSA.signWithRSA(message.getBytes(),key));
@@ -636,6 +678,14 @@ public class SecurityUtil {
         }
     }
 
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param message
+     * @param key
+     * @return
+     */
     public static boolean receiveSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, String message, RsaKeys key) {
         try {
             BigInteger signature = (BigInteger) inputStream.readObject();
@@ -646,6 +696,12 @@ public class SecurityUtil {
         return false;
     }
 
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param key
+     */
     public static void checkSharedKey(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
         byte[] ephemeralKey = SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
         try {
@@ -662,6 +718,12 @@ public class SecurityUtil {
         }
     }
 
+    /**
+     *
+     * @param outputStream ObjectOutputStream - output information to send information
+     * @param inputStream ObjectInputStream - inputStream to receive information
+     * @param key
+     */
     public static void checkSharedKey2(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
         byte[] ephemeralKey = SecurityDH.receiveExchange(outputStream,inputStream);
         try {
@@ -680,11 +742,24 @@ public class SecurityUtil {
         }
     }
 
+    /**
+     *
+     * @param message
+     * @param key
+     * @return
+     */
     public static byte[] hmac(byte[] message,byte[] key) {
         byte[] msd = hash("SHA3-512", message);
         return  encryptSecurity(msd, key);
     }
 
+    /**
+     *
+     * @param hmac
+     * @param message
+     * @param key
+     * @return
+     */
     public static boolean hmacCheck(byte[] hmac,byte[] message, byte[] key) {
         byte[] msg = decipherSecurity(hmac, key);
         byte[] msd = hash("SHA3-512", message);

@@ -56,8 +56,8 @@ public class SecurityRSA {
      * TODO
      */
     public SecurityRSA() {
-        p = SecurityUtil.generatePrime(1024,false);
-        q = SecurityUtil.generatePrime(1024/*TODO needs to have slight difference*/,false);
+        p = SecurityUtil.generatePrime(512,false);
+        q = SecurityUtil.generatePrime(512/*TODO needs to have slight difference*/,false);
         generateN();
         generatePhi();
         generateLambda();
@@ -137,31 +137,27 @@ public class SecurityRSA {
     public static boolean verifySignatureWithRSA(byte[] message, BigInteger signature, RsaKeys publicKey){
         byte[] hashReal = SecurityUtil.hash("SHA-256",message);
         byte[] hashReceived = signature.modPow(publicKey.getE(),publicKey.getN()).toByteArray();
-        if(SecurityUtil.checkHash(hashReal,hashReceived)){
-            return true;
-        }else{
-            return false;
-        }
+        return SecurityUtil.checkHash(hashReal, hashReceived);
     }
 
     /**
      * Method to encrypt a String message with a public key
      * @param message byte[] - the plain text message
      * @param publicKey RsaKeys - the object with the public key to encrypt
-     * @return BigInteger return the cipher in BigInteger format
+     * @return byte[] return the cipher in byte[] format
      */
-    public static BigInteger encryptMessage(byte[] message,RsaKeys publicKey){
-        return (new BigInteger(message)).modPow(publicKey.getE(),publicKey.getN());
+    public static byte[] encryptMessage(byte[] message,RsaKeys publicKey){
+        return (new BigInteger(message)).modPow(publicKey.getE(),publicKey.getN()).toByteArray();
     }
 
     /**
      * Method to decrypt a cipher, in BigInteger format, with a private key
      * @param cipher BigInteger - cipher wished to be decrypted
      * @param privateKey RsaKeys - rsa private key
-     * @return String - clean text message
+     * @return byte[] - clean text message in byte array format
      */
-    public static String decryptMessage(BigInteger cipher,RsaKeys privateKey){
-        return SecurityUtil.byteArrayToString(cipher.modPow(privateKey.getD(),privateKey.getE()).toByteArray());
+    public static byte[] decryptMessage(byte[] cipher,RsaKeys privateKey){
+        return (new BigInteger(cipher)).modPow(privateKey.getD(),privateKey.getN()).toByteArray();
     }
 
     //--------------------------------------------------------------------
