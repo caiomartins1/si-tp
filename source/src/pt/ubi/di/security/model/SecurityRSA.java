@@ -123,7 +123,7 @@ public class SecurityRSA {
      * @return BigInteger - number that represents the encrypted hash
      */
     public static BigInteger signWithRSA(byte[] message, RsaKeys privateKey){
-        return (new BigInteger(SecurityUtil.hash("SHA2-256",message))).modPow(privateKey.getD(),privateKey.getN());
+        return (new BigInteger(SecurityUtil.hash("SHA-256",message))).modPow(privateKey.getD(),privateKey.getN());
     }
 
     /**
@@ -132,14 +132,15 @@ public class SecurityRSA {
      * @param message byte[] - message to verify signature, byte[] so it can be anything
      * @param signature BigInteger - signature in BigInteger format
      * @param publicKey RsaKeys - rsa public key with E and N values
+     * @return boolran returns true if signature is valid false if else
      */
-    public static void verifySignature(byte[] message, BigInteger signature, RsaKeys publicKey){
-        byte[] hashReal = SecurityUtil.hash("SHA2-256",message);
+    public static boolean verifySignatureWithRSA(byte[] message, BigInteger signature, RsaKeys publicKey){
+        byte[] hashReal = SecurityUtil.hash("SHA-256",message);
         byte[] hashReceived = signature.modPow(publicKey.getE(),publicKey.getN()).toByteArray();
         if(SecurityUtil.checkHash(hashReal,hashReceived)){
-            System.out.println("Signature is valid for this message.");
+            return true;
         }else{
-            System.out.println("Signature is not valid for this message.");
+            return false;
         }
     }
 

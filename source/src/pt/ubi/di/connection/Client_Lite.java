@@ -3,6 +3,7 @@ package pt.ubi.di.connection;
 import pt.ubi.di.Model.Validations;
 import pt.ubi.di.security.model.*;
 
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -101,20 +102,38 @@ public class Client_Lite {
     }
 
     private void communicate() {
-        boolean flag = true;
+        boolean flag;
+        boolean signFlag = false;
         if(secretKey == null) {
             System.out.println("No secret key configured.");
             return;
         }
+        String[] options;
+        try { // receive options
+            options =(String[]) inputStream.readObject();
+            if (!(rsaKeys[PUBLIC_KEY] == null || rsaKeys[KEY_PAIR] == null)) {
+                System.out.println("Using rsa signature for message validation.");
+                signFlag = true;
+            }
+        } catch (Exception e) {
+            System.out.println("Error receiving options.");
+        }
+
         while(true) {
             try {
                 flag =(boolean) inputStream.readObject();
                 if (!flag)
                     return;
             } catch (Exception e) {
-                System.out.println("Error Receiving flag.");;
+                System.out.println("Error Receiving flag.");
             }
             String receiveMessage = SecurityUtil.receiveMessage(outputStream,inputStream,secretKey);
+
+            if(signFlag) {
+                if (!SecurityUtil.receiveSignature(outputStream,inputStream,receiveMessage,rsaKeys[PUBLIC_KEY]))
+                    System.out.println("\n>Signature invalid, do not trust the message.");
+            }
+
             System.out.println(receiveMessage);
             System.out.print("message>");
             String message = Validations.readString();
@@ -127,9 +146,12 @@ public class Client_Lite {
                     }
                     outputStream.writeObject(true);
                 } catch (Exception e) {
-                    System.out.println("Error sending flag.");;
+                    System.out.println("Error sending flag.");
                 }
             SecurityUtil.sendMessage(outputStream,inputStream,message,secretKey,new String[]{});
+            if(signFlag) {
+                SecurityUtil.sendSignature(outputStream,inputStream,message,rsaKeys[KEY_PAIR]);
+            }
         }
     }
 

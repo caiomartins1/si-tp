@@ -38,7 +38,7 @@ public class Server_Lite {
             socket = serverSocket.accept();
             try {
                 System.out.println("Server created!");
-                int index = -1;
+                int index;
                 outputStream = new ObjectOutputStream(socket.getOutputStream());
                 inputStream = new ObjectInputStream(socket.getInputStream());
                 while (true) {
@@ -114,7 +114,7 @@ public class Server_Lite {
                             break;
                         case "-message":
                             outputStream.writeObject("message");
-                            communicate();
+                            communicate(new String[]{"-sign"});
                             break;
                         case "-help":
                             System.out.println(
@@ -149,35 +149,62 @@ public class Server_Lite {
         }
     }
 
-    private void communicate() {
-        boolean flag = true;
+    private void communicate(String[] options) {
+        boolean flag;
+        boolean signFlag = false;
         if(secretKey == null) {
             System.out.println("No secret key configured.");
             return;
         }
+
+        try { // send options
+            outputStream.writeObject(options);
+            if(SecurityUtil.lookOptions(options,new String[]{"-sign"}) != -1) { // receive and test signature
+                if (!(rsaKeys[PUBLIC_KEY] == null || rsaKeys[KEY_PAIR] == null)) {
+                    System.out.println("Using rsa signature for message validation.");
+                    signFlag = true;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error sending options.");
+        }
+
         System.out.print("message>");
         while(true) {
                 String message = Validations.readString();
-                    try {
-                        if (message == null)
-                            message = "";
-                        else if (message.equals("-exit")) {
-                            outputStream.writeObject(false);
-                            return;
-                        }
-                        outputStream.writeObject(true);
-                    } catch (Exception e) {
-                        System.out.println("Error sending flag.");;
+
+                try {
+                    if (message == null)
+                        message = "";
+                    else if (message.equals("-exit")) {
+                        outputStream.writeObject(false);
+                        return;
                     }
+                    outputStream.writeObject(true);
+                } catch (Exception e) {
+                    System.out.println("Error sending flag.");
+                }
+
                 SecurityUtil.sendMessage(outputStream,inputStream,message,secretKey,new String[]{});
+
+                if(signFlag) {
+                    SecurityUtil.sendSignature(outputStream,inputStream,message,rsaKeys[KEY_PAIR]);
+                }
+
                 try {
                     flag =(boolean) inputStream.readObject();
                     if (!flag)
                         return;
                 } catch (Exception e) {
-                    System.out.println("Error Receiving flag.");;
+                    System.out.println("Error Receiving flag.");
                 }
                 String receiveMessage = SecurityUtil.receiveMessage(outputStream,inputStream,secretKey);
+
+                if(signFlag) {
+                    if (!SecurityUtil.receiveSignature(outputStream,inputStream,receiveMessage,rsaKeys[PUBLIC_KEY]))
+                        System.out.println("\n>Signature invalid, do not trust the message.");
+                }
+                
                 System.out.println(receiveMessage);
                 System.out.print("message>");
             }

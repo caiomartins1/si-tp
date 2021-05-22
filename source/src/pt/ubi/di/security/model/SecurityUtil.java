@@ -628,6 +628,24 @@ public class SecurityUtil {
         return "";
     }
 
+    public static void sendSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, String message,RsaKeys key) {
+        try {
+            outputStream.writeObject(SecurityRSA.signWithRSA(message.getBytes(),key));
+        }catch (Exception e) {
+            System.out.println("Error sending signature: "+ e.getMessage());
+        }
+    }
+
+    public static boolean receiveSignature(ObjectOutputStream outputStream, ObjectInputStream inputStream, String message, RsaKeys key) {
+        try {
+            BigInteger signature = (BigInteger) inputStream.readObject();
+            return  SecurityRSA.verifySignatureWithRSA(message.getBytes(),signature,key);
+        }catch (Exception e) {
+            System.out.println("Error sending signature: "+ e.getMessage());
+        }
+        return false;
+    }
+
     public static void checkSharedKey(ObjectOutputStream outputStream, ObjectInputStream inputStream,byte[] key) {
         byte[] ephemeralKey = SecurityDH.startExchange(outputStream,inputStream,new String[]{"-l","256"});
         try {
