@@ -1,21 +1,16 @@
 # XIUUU: Safe Sharing of Cryptographic Secrets -> CLI
 
-# 1. Estabelecer Conexão entre os dois clients, e deixar a opção de escolher qual será o server.
+CLI application to send cryptographic secrets between clients.
+All clients connect to a server, from there they can choose to create a point-to-point connection between clients.
 
-# 2. Implementar Diff-Helman
+When connection beteween clients is created, from theres various actions can be performed.
 
-# 3. 
-
-
-
-# Opcionais
-
-# 1. Enviar um ficheiro.
-
-### Notes: If possible, add persistence to the app.
-
-# Deadline: 21 de maio (Sexta-Feira), Relatório 23 de maio.
-
-## Datas:
-### Iniciar projeto: 4 de maio (Terça Feira)
-### Iniciar Relatório: 15 de maio (Sabado)
+Available:
+  Diffie-Hellman
+  Merkle Puzzle
+  RSA
+  
+  simetric key exhange through previous agreed shared key.
+  
+  Secret messages exchange by using the shared key
+  Use of of signature for messages(available when using RSA)
